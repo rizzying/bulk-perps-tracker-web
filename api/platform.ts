@@ -1,4 +1,4 @@
-import { sql, json, fail, NotConfigured } from "../server/db";
+import { sql, json, fail, NotConfigured } from "../server/db.js";
 // Recorded platform OI samples (GitHub Actions every 15 min) for a time range, ms.
 export async function GET(req: Request) {
   try { const q = new URL(req.url).searchParams; const from = new Date(+(q.get("from") ?? 0)), to = new Date(+(q.get("to") ?? Date.now()));
