@@ -12,7 +12,7 @@ const flat = mk(100, () => 100);
 
 describe("strategy catalogue", () => {
   it("has the 10 v1 strategies on the common interface, all pure", () => {
-    expect(STRATEGIES.map((s) => s.id)).toEqual(["smc", "ict", "ema", "macd", "rsi", "bb", "supertrend", "vwap", "donchian", "funding"]);
+    expect(STRATEGIES.map((s) => s.id)).toEqual(["smc", "ict", "ema", "macd", "rsi", "bb", "supertrend", "vwap", "donchian", "funding", "dema"]);
     for (const s of STRATEGIES) { const a = s.evaluate(up, { now: up[299].t }), b = s.evaluate(up, { now: up[299].t }); expect(a).toEqual(b); expect(["long", "short", "neutral"]).toContain(a.direction); expect(a.strength).toBeGreaterThanOrEqual(0); expect(a.strength).toBeLessThanOrEqual(1); }
   });
   it("trend tools read a clean uptrend as long and a downtrend as short, with SL on the correct side", () => {

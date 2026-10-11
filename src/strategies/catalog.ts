@@ -180,8 +180,24 @@ const funding: Strategy = { id: "funding", name: "Funding / OI", family: "positi
   return sig("funding", "positioning", dir, strength, e, sl, tgt.length ? tgt : rTargets(dir, x, sl), "funding normalises", 0, [...why, tgt.length ? "TP at nearest estimated liq cluster" : "TP by R (no liq cluster)"], levels);
 } };
 
-export const STRATEGIES: Strategy[] = [smc, ict, emaRibbon, macdS, rsiS, bb, st, vwapS, don, funding];
+// 11 rizzy's classic: Double EMA (default 21/50, configurable; optional third) + RSI filter (long 40–65, short 35–60, veto ≥75 / ≤25)
+export const demaCfg = (ctx: Ctx) => ctx.emaCfg ?? { fast: 21, slow: 50, thirdOn: false, third: 200 };
+const dema: Strategy = { id: "dema", name: "Double EMA + RSI", family: "trend", short: "EMA 21/50 trend + RSI filter (classic)", evaluate(c, ctx) {
+  const cfg = demaCfg(ctx), x = c.map((k) => k.c), n = c.length, a = last(atr(c)); const F = ema(x, cfg.fast), Sl = ema(x, cfg.slow), T = cfg.thirdOn ? last(ema(x, cfg.third)) : null;
+  const f = F[n - 1], s = Sl[n - 1], px = x[n - 1], r = last(rsi(x, 14)); const nm = `EMA ${cfg.fast}/${cfg.slow}${cfg.thirdOn ? "/" + cfg.third : ""}`;
+  const levels: Level[] = [{ price: f, kind: "static", label: `EMA${cfg.fast}` }, { price: s, kind: "static", label: `EMA${cfg.slow}` }];
+  if ([f, s, r, a].some((v) => !Number.isFinite(v))) return neutral("dema", "trend", ["not enough bars for the EMAs"]);
+  const bull = f > s && px > f && px > s && (T == null || px > T), bear = f < s && px < f && px < s && (T == null || px < T);
+  if (!bull && !bear) return neutral("dema", "trend", [`${nm}: no clean trend (fast ${f > s ? ">" : "<"} slow, price between/through EMAs)`, `RSI ${r.toFixed(0)}`], levels);
+  const dir: Dir = bull ? "long" : "short"; const [lo, hi] = bull ? [40, 65] : [35, 60]; const veto = bull ? r >= 75 : r <= 25;
+  if (veto || r < lo || r > hi) return neutral("dema", "trend", [`${nm} ${bull ? "uptrend" : "downtrend"}`, `RSI filter fails: ${r.toFixed(0)} not in ${lo}–${hi}${veto ? " (veto)" : ""}`], levels);
+  let age = 0; for (let i = n - 1; i > 0 && (bull ? F[i] > Sl[i] : F[i] < Sl[i]); i--) age++;
+  const e = { lo: f - 0.25 * a, hi: f + 0.25 * a }; const sl = bull ? Math.min(s - 0.5 * a, f - a) : Math.max(s + 0.5 * a, f + a);
+  return sig("dema", "trend", dir, age < 48 ? 0.75 : 0.6, e, sl, rTargets(dir, mid(e), sl, [2, 3]), `close back through EMA${cfg.slow}`, age, [`${nm} ${bull ? "uptrend" : "downtrend"}: fast ${bull ? "above" : "below"} slow, price ${bull ? "above" : "below"} both (${age} bars)`, `RSI ${r.toFixed(0)} inside ${lo}–${hi}`, `entry = pullback to EMA${cfg.fast}`], levels);
+} };
+
+export const STRATEGIES: Strategy[] = [smc, ict, emaRibbon, macdS, rsiS, bb, st, vwapS, don, funding, dema];
 export const byId = Object.fromEntries(STRATEGIES.map((s) => [s.id, s])) as Record<StrategyId, Strategy>;
 export const PRESETS: Record<string, StrategyId[]> = {
-  "All v1": STRATEGIES.map((s) => s.id), "Trend follower": ["ema", "macd", "supertrend", "donchian", "vwap"], "SMC / ICT": ["smc", "ict", "vwap", "funding"], "Mean reversion": ["rsi", "bb", "vwap", "funding"],
+  "All v1": STRATEGIES.map((s) => s.id).filter((id) => id !== "dema"), "Double EMA + RSI (classic)": ["dema"], "Trend follower": ["ema", "macd", "supertrend", "donchian", "vwap"], "SMC / ICT": ["smc", "ict", "vwap", "funding"], "Mean reversion": ["rsi", "bb", "vwap", "funding"],
 };

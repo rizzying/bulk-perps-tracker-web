@@ -156,3 +156,12 @@ details.classic>summary{cursor:pointer;list-style:none}details.classic>summary::
 @media (max-width:23rem){.families{grid-template-columns:1fr}}
 .bt summary{cursor:pointer;color:var(--ink-2)}.bt-t{margin:8px 0;font-size:12px}.bt-t td,.bt-t th{padding:4px 8px;white-space:normal}
 .findbtn{font-weight:700!important}
+.findrow{display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:8px;margin-bottom:6px}.findrow .findbtn{margin:0;width:auto}.findrow + .small{margin-bottom:12px}
+.findrow .mode.big{font-size:15px!important;font-weight:700!important;padding:12px!important}
+@media (max-width:47.99rem){.findrow{grid-template-columns:1fr 1fr}.findrow .findbtn{grid-column:1/-1}}
+.zones{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.zone{background:var(--field);border-radius:var(--r-control);box-shadow:var(--ring);padding:10px;display:grid;gap:6px;min-width:0}
+.zone.best{background:var(--surface);box-shadow:0 0 0 1px var(--accent)}
+.zone .prow{justify-content:flex-start;gap:6px;flex-wrap:wrap}.zone .checks{margin:4px 0 0;padding-left:4px;list-style:none}
+@media (max-width:63.99rem){.zones{grid-template-columns:1fr}}
+.findrow .findbtn:not(.primary){background:var(--field)!important;color:var(--ink)!important;box-shadow:var(--ring)!important;font-weight:600!important}

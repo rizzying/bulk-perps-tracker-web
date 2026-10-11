@@ -77,14 +77,14 @@ export function Markets() {
   const setups = useMemo(() => Object.fromEntries(Object.entries(data).map(([s, m]) => [s, evaluateSetup(s, m.htf, m.ltf, m.trading, emaCfg, mode, { h1: m.heat, minRR })])) as Record<string, SetupResult>, [data, emaCfg, mode, minRR]);
   const d = data[sym];
   const [bands, setBands] = useState<Band[]>([]);
-  const ctx = useMemo(() => d ? { now: d.ltf[d.ltf.length - 1]?.t ?? Date.now(), ...fundingCtx(sym, d.funding, d.oiUsd), liq: estimateLiqMap(d.heat, { maxLev: d.maxLev, oiUsd: d.oiUsd }).bins } : { now: Date.now() }, [d, sym]);
+  const ctx = useMemo(() => d ? { emaCfg, now: d.ltf[d.ltf.length - 1]?.t ?? Date.now(), ...fundingCtx(sym, d.funding, d.oiUsd), liq: estimateLiqMap(d.heat, { maxLev: d.maxLev, oiUsd: d.oiUsd }).bins } : { now: Date.now(), emaCfg }, [d, sym, emaCfg]);
   return (
     <>
       <section className="card">
         <h2>Trade Setup <span className="muted small">Strategy picker · {HTF} bias / {LTF} entry · BTC, ETH, SOL · rule-based, not financial advice, never places orders{updated ? ` · updated ${new Date(updated).toLocaleTimeString()}` : ""}</span></h2>
         {err && <div className="err">{err}</div>}
         <div className="symtabs" role="tablist">{SETUP_SYMBOLS.map((s) => <button key={s} role="tab" aria-selected={s === sym} className={"tab " + (s === sym ? "on" : "")} onClick={() => setSym(s)}>{s.replace("-USD", "")}</button>)}</div>
-        <StrategyPicker sym={sym} ltf={d?.ltf} htf={d?.htf} ctx={ctx} onBands={setBands} />
+        <StrategyPicker sym={sym} ltf={d?.ltf} htf={d?.htf} ctx={ctx} onBands={setBands} minRR={minRR} />
       </section>
       <section className="card">
         <details className="classic"><summary><h2 style={{ display: "inline" }}>Classic SMC swing-zone engine</h2> <span className="muted small">the original SMC + {emaLabel(emaCfg)} + RSI checklist with swing-zone candidates</span></summary>
@@ -206,7 +206,7 @@ function Chart({ sym, tf, d, setup, ema: emaCfg, showHeat, bands }: { sym: strin
     }
     else s.zones.forEach((z) => { pl(z.top, C.strong, z.kind); pl(z.bottom, C.strong, ""); });
     const al = (c: string, a: number) => { const m = c.match(/[\d.]+/g); return m && m.length >= 3 ? `rgba(${m[0]}, ${m[1]}, ${m[2]}, ${a.toFixed(2)})` : c; };
-    for (const b of bands) { const col = b.kind === "sl" ? C.neg : b.kind === "tp" ? C.pos : C.accent; const a = 0.35 + 0.65 * b.strength; const style = b.strength >= 0.99 || b.kind === "entry" ? LineStyle.Solid : LineStyle.Dotted;
+    for (const b of bands) { const col = b.kind === "sl" ? C.neg : b.kind === "tp" ? C.pos : C.accent; const a = 0.35 + 0.65 * b.strength; const style = b.dashed ? LineStyle.Dashed : b.strength >= 0.99 || b.kind === "entry" ? LineStyle.Solid : LineStyle.Dotted;
       cs.createPriceLine({ price: b.hi, color: al(col, a), lineWidth: b.kind === "entry" ? 2 : 1, lineStyle: style, axisLabelVisible: true, title: b.label });
       if (b.hi - b.lo > 1e-9) cs.createPriceLine({ price: b.lo, color: al(col, a), lineWidth: 2, lineStyle: style, axisLabelVisible: false, title: "" }); }
     myLiqs.forEach((m) => cs.createPriceLine({ price: m.liq, color: C.liq, lineWidth: 2, lineStyle: LineStyle.Solid, axisLabelVisible: true, title: `YOUR ${m.side} LIQ` }));
