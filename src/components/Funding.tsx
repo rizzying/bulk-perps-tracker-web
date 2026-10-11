@@ -23,9 +23,9 @@ export function Funding() {
       </div>
       {!shown.length ? <div className="muted">{fundingLoading ? "Loading funding history…" : "No funding payments yet."}</div> : <>
         <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: H }} role="img">
-          <line x1="0" x2={W} y1={H / 2} y2={H / 2} stroke="#232a3a" />
+          <line x1="0" x2={W} y1={H / 2} y2={H / 2} stroke="var(--line)" />
           {bars.map((d, i) => { const h = (Math.abs(d.total) / max) * (H / 2 - 6); return (
-            <rect key={d.day} x={i * bw + bw * 0.15} width={bw * 0.7} y={d.total >= 0 ? H / 2 - h : H / 2} height={Math.max(1, h)} fill={d.total >= 0 ? "#2ecc71" : "#ff5c5c"}><title>{d.day}: {sgnUsd(d.total)}</title></rect>); })}
+            <rect key={d.day} x={i * bw + bw * 0.15} width={bw * 0.7} y={d.total >= 0 ? H / 2 - h : H / 2} height={Math.max(1, h)} fill={d.total >= 0 ? "var(--pos)" : "var(--neg)"}><title>{d.day}: {sgnUsd(d.total)}</title></rect>); })}
         </svg>
         <table>
           <thead><tr><th>Day</th><th>Total</th>{symbols.map((s) => <th key={s}>{s}</th>)}<th>Payments</th></tr></thead>

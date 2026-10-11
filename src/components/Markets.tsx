@@ -4,6 +4,7 @@ import { client } from "../api/client";
 import { Candle, ema, rsi } from "../ta/indicators";
 import { evaluateSetup, SETUP_SYMBOLS, SetupResult, HTF, LTF, EmaCfg, DEFAULT_EMA, sanitizeEma, emaLabel, Mode, SideResult , histHit, histLabel } from "../ta/setup";
 import { estimateLiqMap, LiqBin, DEFAULT_TIERS } from "../ta/liqmap";
+import { tokenColor, useThemeName } from "../ui/theme";
 import { useStore } from "../store";
 import { px, usd } from "../fmt";
 
@@ -25,7 +26,7 @@ async function loadMarket(sym: string, info: Map<string, { status: string; maxLe
 
 const EK = "bpt.emaCfg.v1";
 const loadEma = (): EmaCfg => { try { return sanitizeEma({ ...DEFAULT_EMA, ...JSON.parse(localStorage.getItem(EK) || "{}") }); } catch { return DEFAULT_EMA; } };
-const EMA_COLORS = ["#f5a623", "#2f6fed", "#c678dd"];
+const EMA_COLORS = ["var(--accent-ink)", "var(--warn-ink)", "var(--ink-2)"];
 
 function EmaSettings({ cfg, onChange }: { cfg: EmaCfg; onChange: (c: EmaCfg) => void }) {
   const [draft, setDraft] = useState(cfg);
@@ -93,7 +94,7 @@ export function Markets() {
         <div className="setups">
           {SETUP_SYMBOLS.map((s) => { const r = setups[s]; return (
             <button key={s} className={"setupcard " + (s === sym ? "on " : "") + (r ? r.verdict.replace(" ", "").toLowerCase() : "")} onClick={() => setSym(s)}>
-              <div className="prow"><b>{s}</b><span className="verdict">{r ? r.verdict : "…"}{r?.counterTrend && <span className="ct">COUNTER-TREND</span>}</span></div>
+              <div className="prow"><b className="sym">{s}</b><span className="verdict">{r ? r.verdict : "…"}{r?.counterTrend && <span className="ct">COUNTER-TREND</span>}</span></div>
               {r && <div className="small muted">4h {r.bias === "bull" ? "uptrend" : r.bias === "bear" ? "downtrend" : "neutral"} · {r.verdict === "NO TRADE" ? `closest: ${r.best.dir} ${r.best.confidence}%` : `confidence ${r.score}%`} · {px(r.price)}</div>}
             </button>); })}
         </div>
@@ -177,28 +178,30 @@ function Chart({ sym, tf, d, setup, ema: emaCfg, showHeat }: { sym: string; tf: 
     return () => { alive = false; };
   }, [tf, d]);
 
+  const themeName = useThemeName();
   useEffect(() => {
     if (!box.current || !rbox.current || !candles?.length) return;
-    const opts = { layout: { background: { color: "#131824" }, textColor: "#8a93a6" }, grid: { vertLines: { color: "#1b2130" }, horzLines: { color: "#1b2130" } }, crosshair: { mode: CrosshairMode.Normal }, timeScale: { timeVisible: true, borderColor: "#232a3a" }, rightPriceScale: { borderColor: "#232a3a" } };
+    const C = { bg: tokenColor("--surface"), ink2: tokenColor("--ink-2"), soft: tokenColor("--line-soft"), line: tokenColor("--line"), strong: tokenColor("--line-strong"), pos: tokenColor("--pos"), neg: tokenColor("--neg"), accent: tokenColor("--accent"), warn: tokenColor("--warn-ink"), liq: tokenColor("--liq") };
+    const opts = { layout: { background: { color: C.bg }, textColor: C.ink2, fontFamily: "Geist Mono Variable, ui-monospace, monospace" }, grid: { vertLines: { color: C.soft }, horzLines: { color: C.soft } }, crosshair: { mode: CrosshairMode.Normal }, timeScale: { timeVisible: true, borderColor: C.line }, rightPriceScale: { borderColor: C.line } };
     const ch: IChartApi = createChart(box.current, { ...opts, height: 420, width: box.current.clientWidth });
     const rc: IChartApi = createChart(rbox.current, { ...opts, height: 110, width: rbox.current.clientWidth });
-    const cs = ch.addCandlestickSeries({ upColor: "#2ecc71", downColor: "#ff5c5c", borderVisible: false, wickUpColor: "#2ecc71", wickDownColor: "#ff5c5c" });
+    const cs = ch.addCandlestickSeries({ upColor: C.pos, downColor: C.neg, borderVisible: false, wickUpColor: C.pos, wickDownColor: C.neg });
     cs.setData(candles.map((k) => ({ time: local(k.t), open: k.o, high: k.h, low: k.l, close: k.c })));
     const closes = candles.map((k) => k.c);
     const line = (n: number, color: string) => { const s = ch.addLineSeries({ color, lineWidth: 1, priceLineVisible: false, lastValueVisible: false }); const e = ema(closes, n); s.setData(candles.map((k, i) => ({ time: local(k.t), value: e[i] })).filter((x) => !isNaN(x.value))); };
-    [emaCfg.fast, emaCfg.slow, ...(emaCfg.thirdOn ? [emaCfg.third] : [])].forEach((n, i) => line(n, EMA_COLORS[i]));
-    const rs = rc.addLineSeries({ color: "#56b6c2", lineWidth: 1, priceLineVisible: false });
+    [emaCfg.fast, emaCfg.slow, ...(emaCfg.thirdOn ? [emaCfg.third] : [])].forEach((n, i) => line(n, i === 0 ? C.accent : i === 1 ? C.warn : C.ink2));
+    const rs = rc.addLineSeries({ color: C.accent, lineWidth: 1, priceLineVisible: false });
     const rv = rsi(closes, 14); rs.setData(candles.map((k, i) => ({ time: local(k.t), value: rv[i] })).filter((x) => !isNaN(x.value)));
-    [70, 30].forEach((v) => rs.createPriceLine({ price: v, color: "#3a4256", lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false, title: "" }));
+    [70, 30].forEach((v) => rs.createPriceLine({ price: v, color: C.strong, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false, title: "" }));
     const s = setup; const pl = (price: number | undefined, color: string, title: string) => price != null && cs.createPriceLine({ price, color, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title });
-    if (s.verdict !== "NO TRADE") { pl(s.entry?.low, "#8a93a6", "entry"); pl(s.entry?.high, "#8a93a6", "entry"); pl(s.stop, "#ff5c5c", "SL"); pl(s.tp1, "#2ecc71", "TP1"); pl(s.tp2, "#2ecc71", "TP2"); }
+    if (s.verdict !== "NO TRADE") { pl(s.entry?.low, C.ink2, "entry"); pl(s.entry?.high, C.ink2, "entry"); pl(s.stop, C.neg, "SL"); pl(s.tp1, C.pos, "TP1"); pl(s.tp2, C.pos, "TP2"); }
     else if (s.best.plan) {
       const p = s.best.plan; const d = s.best.dir;
-      p.candidates.forEach((c, i) => { if (c.best) return; pl(c.zone.top, "#4a5878", `${d} zone ${i + 1}`); pl(c.zone.bottom, "#4a5878", ""); });
-      pl(p.entry.high, "#f5d76e", `★ ${d} zone`); pl(p.entry.low, "#f5d76e", ""); pl(p.stop, "#ff5c5c", "★ SL"); pl(p.tp1, "#2ecc71", "★ TP1"); if (Math.abs(p.tp2 - p.tp1) > 1e-9) pl(p.tp2, "#2ecc71", "★ TP2");
+      p.candidates.forEach((c, i) => { if (c.best) return; pl(c.zone.top, C.strong, `${d} zone ${i + 1}`); pl(c.zone.bottom, C.strong, ""); });
+      pl(p.entry.high, C.warn, `★ ${d} zone`); pl(p.entry.low, C.warn, ""); pl(p.stop, C.neg, "★ SL"); pl(p.tp1, C.pos, "★ TP1"); if (Math.abs(p.tp2 - p.tp1) > 1e-9) pl(p.tp2, C.pos, "★ TP2");
     }
-    else s.zones.forEach((z) => { pl(z.top, "#3a4a6a", z.kind); pl(z.bottom, "#3a4a6a", ""); });
-    myLiqs.forEach((m) => cs.createPriceLine({ price: m.liq, color: "#ff2d55", lineWidth: 2, lineStyle: LineStyle.Solid, axisLabelVisible: true, title: `YOUR ${m.side} LIQ` }));
+    else s.zones.forEach((z) => { pl(z.top, C.strong, z.kind); pl(z.bottom, C.strong, ""); });
+    myLiqs.forEach((m) => cs.createPriceLine({ price: m.liq, color: C.liq, lineWidth: 2, lineStyle: LineStyle.Solid, axisLabelVisible: true, title: `YOUR ${m.side} LIQ` }));
     const saved = zoomMemo.get(sym + tf); if (saved) ch.timeScale().setVisibleLogicalRange(saved); else { ch.timeScale().fitContent(); } rc.timeScale().fitContent();
     ch.timeScale().subscribeVisibleLogicalRangeChange((r) => { if (r) zoomMemo.set(sym + tf, r); });
     // keep time scales in sync
@@ -213,7 +216,7 @@ function Chart({ sym, tf, d, setup, ema: emaCfg, showHeat }: { sym: string; tf: 
     ro.observe(box.current);
     const iv = setInterval(drawHeat, 1000); // price scale autoscale changes
     return () => { clearInterval(iv); ro.disconnect(); ch.remove(); rc.remove(); };
-  }, [candles, heat, myLiqs, setup, emaCfg]);
+  }, [candles, heat, myLiqs, setup, emaCfg, themeName]);
 
   const tot = heat.bins.reduce((a, b) => ({ l: a.l + b.long, s: a.s + b.short }), { l: 0, s: 0 });
   const topLong = [...heat.bins].sort((a, b) => b.long - a.long)[0], topShort = [...heat.bins].sort((a, b) => b.short - a.short)[0];
@@ -232,8 +235,8 @@ function Chart({ sym, tf, d, setup, ema: emaCfg, showHeat }: { sym: string; tf: 
       <div className="muted small" style={{ margin: "4px 0" }}>RSI(14)</div>
       <div ref={rbox} />
       <div className="muted small legend">
-        {[emaCfg.fast, emaCfg.slow, ...(emaCfg.thirdOn ? [emaCfg.third] : [])].map((n, i) => <span key={i} style={{ color: EMA_COLORS[i] }}>━ EMA{n} </span>)} <span style={{ color: "#ff2d55" }}>━ your liquidation price</span>
-        {showHeat && <> · <b>Heatmap = ESTIMATE.</b> <span className="hl-key">■</span> est. long liquidations <span className="hs-key">■</span> est. short liquidations. Model: last 14 days of 1h volume as new opens, split 50/50, leverage tiers {DEFAULT_TIERS.filter((t) => t.lev <= d.maxLev).map((t) => `${t.lev}x`).join("/")}, levels removed once traded through, scaled to current open interest ({usd(d.oiUsd, 0)}). Biggest est. clusters: longs ~{px(topLong?.price ?? 0)}, shorts ~{px(topShort?.price ?? 0)} ({usd(tot.l, 0)} long / {usd(tot.s, 0)} short in view range).</>}
+        {[emaCfg.fast, emaCfg.slow, ...(emaCfg.thirdOn ? [emaCfg.third] : [])].map((n, i) => <span key={i} style={{ color: EMA_COLORS[i] }}>━ EMA{n} </span>)} <span style={{ color: "var(--liq-ink)" }}>━ your liquidation price</span>
+        {showHeat && <> · <b>Heatmap = ESTIMATE.</b> <span className="hl-key" aria-hidden="true">■</span> est. long liquidations <span className="hs-key" aria-hidden="true">■</span> est. short liquidations. Model: last 14 days of 1h volume as new opens, split 50/50, leverage tiers {DEFAULT_TIERS.filter((t) => t.lev <= d.maxLev).map((t) => `${t.lev}x`).join("/")}, levels removed once traded through, scaled to current open interest ({usd(d.oiUsd, 0)}). Biggest est. clusters: longs ~{px(topLong?.price ?? 0)}, shorts ~{px(topShort?.price ?? 0)} ({usd(tot.l, 0)} long / {usd(tot.s, 0)} short in view range).</>}
       </div>
     </div>
   );

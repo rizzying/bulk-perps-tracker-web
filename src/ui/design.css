@@ -2,10 +2,12 @@
    Fonts: Geist + Geist Mono (Vercel), SIL Open Font License 1.1, self-hosted via @fontsource-variable. */
 :root{
   --bg:#ffffff; --surface:#ffffff; --field:color-mix(in srgb,#000 4%,#fff); --hover:color-mix(in srgb,#000 6%,#fff);
-  --ink:#0a0a0a; --ink-2:color-mix(in srgb,#000 62%,#fff); --ink-3:color-mix(in srgb,#000 50%,#fff);
+  --ink:#0a0a0a; --ink-2:color-mix(in srgb,#000 62%,#fff); --ink-3:color-mix(in srgb,#000 60%,#fff);
   --line:color-mix(in srgb,#000 11%,#fff); --line-strong:color-mix(in srgb,#000 22%,#fff); --line-soft:color-mix(in srgb,#000 6%,#fff);
   --accent:#7c5cff; --accent-tint:color-mix(in srgb,var(--accent) 14%,transparent);
   --pos:#12a150; --neg:#e5484d; --warn:#f5a524; --liq:#d6336c;
+  /* text-safe variants (WCAG AA ≥4.5:1 on surface) */ --pos-ink:#08692f; --neg-ink:#c62a2f; --warn-ink:#8a5a00; --liq-ink:#b0254f; --accent-ink:#5b3fd9;
+  --heat-long:#b86a00; --heat-short:#8f3fd6;
   --pos-tint:color-mix(in srgb,var(--pos) 12%,transparent); --neg-tint:color-mix(in srgb,var(--neg) 12%,transparent); --warn-tint:color-mix(in srgb,var(--warn) 14%,transparent); --liq-tint:color-mix(in srgb,var(--liq) 16%,transparent);
   --r-chip:6px; --r-control:10px; --r-card:14px;
   --ring:0 0 0 1px var(--line);
@@ -20,9 +22,10 @@
 }
 :root.dark{
   --bg:#08080a; --surface:color-mix(in srgb,#fff 4%,#08080a); --field:color-mix(in srgb,#fff 8%,#08080a); --hover:color-mix(in srgb,#fff 12%,#08080a);
-  --ink:#f4f4f5; --ink-2:color-mix(in srgb,#fff 64%,#000); --ink-3:color-mix(in srgb,#fff 48%,#000);
+  --ink:#f4f4f5; --ink-2:color-mix(in srgb,#fff 64%,#000); --ink-3:color-mix(in srgb,#fff 60%,#000);
   --line:color-mix(in srgb,#fff 12%,#000); --line-strong:color-mix(in srgb,#fff 22%,#000); --line-soft:color-mix(in srgb,#fff 7%,#000);
   --pos:#3ddc84; --neg:#ff5c63;
+  --pos-ink:#3ddc84; --neg-ink:#ff6b71; --warn-ink:#f5b445; --liq-ink:#ff6b9a; --accent-ink:#a996ff; --heat-long:#ff9f1a; --heat-short:#b04cff;
   --sh-card:0 0 0 1px #ffffff1a,0 1px 2px #0003,0 2px 6px #0003; --sh-raised:0 0 0 1px #ffffff22,0 4px 14px #0006; --sh-overlay:0 0 0 1px #ffffff26,0 10px 30px #0008;
   color-scheme:dark;
 }
@@ -30,7 +33,7 @@ html,body{background:var(--bg);color:var(--ink);font-family:var(--font-sans);fon
 :root{font-family:var(--font-sans);color:var(--ink);background:var(--bg)}
 h1{font-size:16px;font-weight:500;letter-spacing:-.025em}h2,h3{font-size:11px;font-weight:500;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2);margin:0 0 12px}
 .muted{color:var(--ink-2)}.small{font-size:12px}
-.pos{color:var(--pos)}.neg{color:var(--neg)}
+.pos{color:var(--pos-ink)}.neg{color:var(--neg-ink)}
 /* numbers: mono + tabular everywhere they are counted */
 td,.v,.stat .v,.big,code,input[type=number],.livestrip b,.mono,.num,kbd{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
 .stat .k,th,.livestrip .k{font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-3);font-weight:500}
@@ -58,9 +61,9 @@ input:focus,select:focus,textarea:focus,button:focus-visible{outline:none;box-sh
 input[type=checkbox],input[type=range]{box-shadow:none;accent-color:var(--accent)}
 /* badges / pills */
 .pill,.badge,.tag{border-radius:var(--r-chip);font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:.04em;font-weight:500;padding:2px 6px;border:0}
-.pill.safe{background:var(--pos-tint);color:var(--pos)}.pill.warn{background:var(--warn-tint);color:var(--warn)}.pill.danger{background:var(--liq-tint);color:var(--liq);animation:pulse 1.4s ease-in-out infinite}
-.tag{background:var(--field);box-shadow:var(--ring);color:var(--ink-2)}.badge.est{background:var(--accent-tint);color:var(--accent)}
-@keyframes pulse{50%{opacity:.55}}
+.pill.safe{background:var(--pos-tint);color:var(--pos-ink)}.pill.warn{background:var(--warn-tint);color:var(--warn-ink)}.pill.danger{background:var(--liq-tint);color:var(--liq-ink);animation:pulse 1.4s ease-in-out infinite}
+.tag{background:var(--field);box-shadow:var(--ring);color:var(--ink-2)}.badge.est{background:var(--accent-tint);color:var(--accent-ink)}
+@keyframes pulse{50%{box-shadow:0 0 0 3px var(--liq-tint)}}
 /* tables */
 table{font-size:13px;border-collapse:separate;border-spacing:0}
 th{position:sticky;top:0;background:var(--surface);text-align:left;padding:8px;box-shadow:inset 0 -1px 0 var(--line)}
@@ -71,7 +74,7 @@ tr.risk-danger{background:none!important;box-shadow:inset 3px 0 0 var(--liq)}tr.
 .theme-btn{min-width:36px}
 /* ≥48rem: two-column stat grids; ≥80rem wider */
 @media (max-width:47.99rem){
-  .app{padding:8px 12px calc(96px + env(safe-area-inset-bottom))}
+  .app{padding:8px 12px calc(112px + env(safe-area-inset-bottom))}
   .card{padding:16px;border-radius:12px}
   header h1{font-size:15px}
   /* floating bottom nav pill */
@@ -98,3 +101,13 @@ tr.risk-danger{background:none!important;box-shadow:inset 3px 0 0 var(--liq)}tr.
 .whatif{background:var(--field);border-radius:var(--r-control);box-shadow:var(--ring);padding:10px 12px;margin:10px 0}
 @media (max-width:47.99rem){header{position:static;backdrop-filter:none;-webkit-backdrop-filter:none;background:transparent;margin:0 0 4px}}
 @media (max-width:47.99rem){header nav .tab{padding:10px 9px}}
+
+/* mobile Setup cards: stack, no awkward wraps */
+@media (max-width:47.99rem){.setups{grid-template-columns:1fr}.setupcard{display:block;width:100%}.aura .grid4{grid-template-columns:1fr 1fr}input.lookup{min-width:0}}
+@media (max-width:23rem){.aura .grid4,.grid4,.stats{grid-template-columns:1fr!important}}
+input[type=number]{color:var(--ink);-webkit-text-fill-color:var(--ink);opacity:1}
+input:disabled{color:var(--ink-3);-webkit-text-fill-color:var(--ink-3)}
+input::placeholder{color:var(--ink-3);opacity:1}
+.app{overflow-wrap:anywhere}td,th,.verdict,.sym,.stat .v{overflow-wrap:normal}
+/* desktop/tablet: wide tables scroll inside their card instead of widening the page */
+@media (min-width:48rem){.card{overflow-x:auto}.card table{min-width:max-content}}

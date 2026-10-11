@@ -1,0 +1,571 @@
+{
+ "combos": [
+  {
+   "W": 360,
+   "tab": "Dashboard",
+   "theme": "dark",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 360,
+   "tab": "Dashboard",
+   "theme": "light",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 360,
+   "tab": "Setup",
+   "theme": "dark",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 360,
+   "tab": "Setup",
+   "theme": "light",
+   "contrast": [
+    {
+     "el": "span.hl-key",
+     "text": "■",
+     "ratio": 4.12,
+     "need": 4.5
+    }
+   ],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 360,
+   "tab": "Funding",
+   "theme": "dark",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 360,
+   "tab": "Funding",
+   "theme": "light",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 360,
+   "tab": "AURA",
+   "theme": "dark",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 360,
+   "tab": "AURA",
+   "theme": "light",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 360,
+   "tab": "Alerts",
+   "theme": "dark",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 360,
+   "tab": "Alerts",
+   "theme": "light",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 390,
+   "tab": "Dashboard",
+   "theme": "dark",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 390,
+   "tab": "Dashboard",
+   "theme": "light",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 390,
+   "tab": "Setup",
+   "theme": "dark",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 390,
+   "tab": "Setup",
+   "theme": "light",
+   "contrast": [
+    {
+     "el": "span.hl-key",
+     "text": "■",
+     "ratio": 4.12,
+     "need": 4.5
+    }
+   ],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 390,
+   "tab": "Funding",
+   "theme": "dark",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 390,
+   "tab": "Funding",
+   "theme": "light",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 390,
+   "tab": "AURA",
+   "theme": "dark",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 390,
+   "tab": "AURA",
+   "theme": "light",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 390,
+   "tab": "Alerts",
+   "theme": "dark",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 390,
+   "tab": "Alerts",
+   "theme": "light",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 430,
+   "tab": "Dashboard",
+   "theme": "dark",
+   "contrast": [
+    {
+     "el": "span.pill.danger",
+     "text": "2.11%",
+     "ratio": 3.84,
+     "need": 4.5
+    }
+   ],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 430,
+   "tab": "Dashboard",
+   "theme": "light",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 430,
+   "tab": "Setup",
+   "theme": "dark",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 430,
+   "tab": "Setup",
+   "theme": "light",
+   "contrast": [
+    {
+     "el": "span.hl-key",
+     "text": "■",
+     "ratio": 4.12,
+     "need": 4.5
+    }
+   ],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 430,
+   "tab": "Funding",
+   "theme": "dark",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 430,
+   "tab": "Funding",
+   "theme": "light",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 430,
+   "tab": "AURA",
+   "theme": "dark",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 430,
+   "tab": "AURA",
+   "theme": "light",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 430,
+   "tab": "Alerts",
+   "theme": "dark",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 430,
+   "tab": "Alerts",
+   "theme": "light",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 768,
+   "tab": "Dashboard",
+   "theme": "dark",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 768,
+   "tab": "Dashboard",
+   "theme": "light",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 768,
+   "tab": "Setup",
+   "theme": "dark",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 768,
+   "tab": "Setup",
+   "theme": "light",
+   "contrast": [
+    {
+     "el": "td.pos",
+     "text": "3.27 R",
+     "ratio": 4.2,
+     "need": 4.5
+    },
+    {
+     "el": "span.hl-key",
+     "text": "■",
+     "ratio": 4.12,
+     "need": 4.5
+    }
+   ],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 768,
+   "tab": "Funding",
+   "theme": "dark",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 768,
+   "tab": "Funding",
+   "theme": "light",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 768,
+   "tab": "AURA",
+   "theme": "dark",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 768,
+   "tab": "AURA",
+   "theme": "light",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 768,
+   "tab": "Alerts",
+   "theme": "dark",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 768,
+   "tab": "Alerts",
+   "theme": "light",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 1280,
+   "tab": "Dashboard",
+   "theme": "dark",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 1280,
+   "tab": "Dashboard",
+   "theme": "light",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 1280,
+   "tab": "Setup",
+   "theme": "dark",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 1280,
+   "tab": "Setup",
+   "theme": "light",
+   "contrast": [
+    {
+     "el": "td.pos",
+     "text": "3.27 R",
+     "ratio": 4.2,
+     "need": 4.5
+    },
+    {
+     "el": "span.hl-key",
+     "text": "■",
+     "ratio": 4.12,
+     "need": 4.5
+    }
+   ],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 1280,
+   "tab": "Funding",
+   "theme": "dark",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 1280,
+   "tab": "Funding",
+   "theme": "light",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 1280,
+   "tab": "AURA",
+   "theme": "dark",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 1280,
+   "tab": "AURA",
+   "theme": "light",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 1280,
+   "tab": "Alerts",
+   "theme": "dark",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  },
+  {
+   "W": 1280,
+   "tab": "Alerts",
+   "theme": "light",
+   "contrast": [],
+   "overflow": [],
+   "clipped": [],
+   "docOverflow": 0,
+   "navOverlap": null
+  }
+ ],
+ "console": [],
+ "edge": {
+  "invalidWallet": "That doesn't look like a Solana/Bulk wallet address.",
+  "manifest": {
+   "name": "Bulk Perps Tracker",
+   "icons": 3,
+   "display": "standalone",
+   "sw": true
+  },
+  "rateLimited": [
+   " Can't reach the Bulk API (offline, blocked, or rate-limited). It will retry on the next refresh."
+  ]
+ }
+}

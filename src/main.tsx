@@ -7,3 +7,5 @@ ReactDOM.createRoot(document.getElementById("root")!).render(<React.StrictMode>{
 if ("serviceWorker" in navigator && !isPulse) window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
 
 applyTheme(); if (!isPulse) startResponsiveTables();
+// public build: journal removed — clear any journal/sync data left by the first web version
+try { for (const k of Object.keys(localStorage)) if (/journal|syncPass/i.test(k)) localStorage.removeItem(k); sessionStorage.removeItem("bpt.syncPass"); } catch { /* ignore */ }

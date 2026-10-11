@@ -13,7 +13,12 @@ export class BulkClient {
 
   private async req(path: string, init?: RequestInit, attempt = 0): Promise<unknown> {
     await this.bucket.take();
-    const r = await this.f(API + path, init);
+    let r: Response;
+    try { r = await this.f(API + path, init); }
+    catch {
+      if (attempt < 3) { await new Promise((s) => setTimeout(s, 1000 * 2 ** attempt)); return this.req(path, init, attempt + 1); }
+      throw new BulkError(0, "NETWORK", "Can't reach the Bulk API (offline, blocked, or rate-limited). It will retry on the next refresh.");
+    }
     if ((r.status === 429 || r.status >= 500) && attempt < 4) {
       const ra = Number(r.headers.get("retry-after"));
       const wait = ra > 0 ? ra * 1000 : Math.min(8000, 500 * 2 ** attempt) * (0.5 + Math.random());
@@ -22,6 +27,7 @@ export class BulkClient {
     }
     const text = await r.text();
     let body: any; try { body = JSON.parse(text); } catch { body = text; }
+    if (r.status === 429) throw new BulkError(429, "RATE_LIMIT", "Bulk is rate-limiting requests right now (too many from this network). It will retry automatically; try again in a minute.");
     if (!r.ok) throw new BulkError(r.status, body?.error?.code ?? "HTTP", body?.error?.message ?? String(text).slice(0, 200));
     return body;
   }
