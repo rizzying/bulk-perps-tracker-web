@@ -1,0 +1,14 @@
+Consensus backtest · Hyperliquid 1h entry / 4h bias · BTC+ETH+SOL · 2026-04-01 → 2026-10-08 · stride 2 bars · fee 0.034999999999999996%/side
+signals 483, rejected (TP1<1.2R etc.) 594, no-direction 48, unfilled 157
+ALL                n= 326  TP1 hit  35.0%  avg -0.024R  (timeouts 52)
+High               n=  45  TP1 hit  26.7%  avg -0.168R  (timeouts 10)
+Medium             n= 132  TP1 hit  34.1%  avg +0.040R  (timeouts 26)
+Mixed              n= 149  TP1 hit  38.3%  avg -0.037R  (timeouts 16)
+agree 0-60%        n=  50  TP1 hit  38.0%  avg -0.072R  (timeouts 5)
+agree 60-75%       n=  73  TP1 hit  34.2%  avg -0.035R  (timeouts 13)
+agree 75-100%      n= 203  TP1 hit  34.5%  avg -0.008R  (timeouts 34)
+long               n= 161  TP1 hit  42.9%  avg +0.134R  (timeouts 21)
+short              n= 165  TP1 hit  27.3%  avg -0.178R  (timeouts 31)
+BTC-USD            n= 108  TP1 hit  31.5%  avg -0.093R  (timeouts 18)
+ETH-USD            n= 104  TP1 hit  39.4%  avg +0.099R  (timeouts 18)
+SOL-USD            n= 114  TP1 hit  34.2%  avg -0.071R  (timeouts 16)

@@ -10,7 +10,7 @@ const SK = "bpt.strategies.v1", VK = "bpt.strategyEyes.v1";
 const loadSel = (): StrategyId[] => { try { const v = JSON.parse(localStorage.getItem(SK) || "null"); if (Array.isArray(v) && v.length) return v.filter((x) => byId[x as StrategyId]); } catch { /* */ } return PRESETS["All v1"]; };
 const FAMS: Family[] = ["trend", "momentum", "structure", "volatility", "volume", "positioning"];
 export type Band = { lo: number; hi: number; kind: "entry" | "sl" | "tp"; label: string; strength: number; side: "long" | "short" };
-const AGREE_TIP = "Agreement ≠ probability. It's the share of active strategy families pointing the same way. Most indicators come from the same price data, so agreement is confluence, not a win rate. See the backtest line for how each level actually performed historically.";
+const AGREE_TIP = "Agreement ≠ probability. It's the share of active strategy families pointing the same way. Most indicators come from the same price data, so agreement is confluence, not a win rate. In our backtest, higher agreement did NOT produce better results.";
 
 export function StrategyPicker({ sym, ltf, htf, ctx, onBands }: { sym: string; ltf: Candle[] | undefined; htf: Candle[] | undefined; ctx: Ctx; onBands: (b: Band[]) => void }) {
   const [sel, setSel] = useState<StrategyId[]>(loadSel);
@@ -47,7 +47,7 @@ export function StrategyPicker({ sym, ltf, htf, ctx, onBands }: { sym: string; l
 }
 
 function ConsensusCard({ r, sym }: { r: Consensus; sym: string }) {
-  const bt = CONSENSUS_BACKTEST?.byLabel?.[r.label];
+  const bt = CONSENSUS_BACKTEST.byLabel[r.label];
   const dirTxt = r.dir === "neutral" ? "MIXED" : r.dir.toUpperCase();
   return <div className={"consensus " + r.dir}>
     <div className="cs-top">
@@ -60,12 +60,15 @@ function ConsensusCard({ r, sym }: { r: Consensus; sym: string }) {
     </div>
     {r.conflicts.length > 0 && <div className="conflict" role="alert">⚠ Conflict: {r.conflicts.join(" · ")}{r.tfAgree === false ? " (confidence capped at Mixed)" : ""}</div>}
     {r.dir !== "neutral" && r.entry ? <div className="cs-plan">
-      <div className="stat"><div className="k">Entry zone</div><div className="v">{px(r.entry.lo)}{r.entry.hi - r.entry.lo > 1e-9 ? ` – ${px(r.entry.hi)}` : ""}</div><div className="small muted">{r.entry.families.length} famil{r.entry.families.length === 1 ? "y" : "ies"}: {r.entry.labels.slice(0, 5).join(", ")}</div></div>
+      <div className="stat"><div className="k">Entry zone</div><div className="v">{px(r.entry.lo)}{r.entry.hi - r.entry.lo > 1e-9 ? ` – ${px(r.entry.hi)}` : ""}</div><div className="small muted">levels from {r.entry.families.length} famil{r.entry.families.length === 1 ? "y" : "ies"}: {r.entry.labels.slice(0, 5).join(", ")}</div></div>
       <div className="stat"><div className="k">Stop loss</div><div className="v">{r.sl != null ? px(r.sl) : "–"}</div><div className="small muted">beyond the furthest agreeing invalidation + 0.2 ATR</div></div>
       <div className="stat"><div className="k">Targets</div>{r.tps.length ? r.tps.map((t, i) => <div key={i} className="v small-v">TP{i + 1} {px(t.price)} <span className={t.rr >= 1.2 ? "pos" : "neg"}>{t.rr.toFixed(2)}R</span></div>) : <div className="v">–</div>}</div>
     </div> : <div className="muted small">No consensus direction: the selected families cancel out or are all neutral. Stay flat.</div>}
     {r.rejected && <div className="conflict">✗ Setup rejected: {r.rejected}</div>}
-    <div className="small muted">{bt ? `Backtest (Hyperliquid ${CONSENSUS_BACKTEST.period}, ${CONSENSUS_BACKTEST.tf}, BTC/ETH/SOL): "${r.label}" setups hit TP1 ${Math.round(bt.win * 100)}% of ${bt.n} trades, avg ${bt.avgR >= 0 ? "+" : ""}${bt.avgR.toFixed(2)}R. ` : ""}Agreement is not a win probability. Not financial advice.</div>
+    <details className="bt small"><summary>Backtest: "{r.label}" hit TP1 {Math.round(bt.win * 100)}% ({bt.n} trades, avg {bt.avgR >= 0 ? "+" : ""}{bt.avgR.toFixed(2)}R). <b>Higher agreement did not do better historically.</b></summary>
+      <table className="bt-t"><thead><tr><th>Label</th><th>{CONSENSUS_BACKTEST.tf}<br />{CONSENSUS_BACKTEST.period}</th><th>{CONSENSUS_BACKTEST.longer.tf}<br />{CONSENSUS_BACKTEST.longer.period}</th></tr></thead>
+        <tbody>{(["High", "Medium", "Mixed"] as const).map((l) => { const a = CONSENSUS_BACKTEST.byLabel[l], b = CONSENSUS_BACKTEST.longer.byLabel[l]; return <tr key={l} className={l === r.label ? "bestc" : ""}><td>{l}</td><td>{Math.round(a.win * 100)}% · {a.avgR >= 0 ? "+" : ""}{a.avgR.toFixed(2)}R · n={a.n}</td><td>{Math.round(b.win * 100)}% · {b.avgR >= 0 ? "+" : ""}{b.avgR.toFixed(2)}R · n={b.n}</td></tr>; })}</tbody></table>
+      <div className="muted">Hyperliquid history, BTC+ETH+SOL, fees included, limit fill at the consensus entry, SL vs TP1, no parameters fitted, Funding/OI excluded (no history). Expectancy was negative or near zero at every label. Use the consensus to find confluence levels, not as a signal to trust. Agreement is not a win probability. Not financial advice.</div></details>
   </div>;
 }
 

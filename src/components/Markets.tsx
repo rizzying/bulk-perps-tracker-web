@@ -205,7 +205,7 @@ function Chart({ sym, tf, d, setup, ema: emaCfg, showHeat, bands }: { sym: strin
       pl(p.entry.high, C.warn, `★ ${d} zone`); pl(p.entry.low, C.warn, ""); pl(p.stop, C.neg, "★ SL"); pl(p.tp1, C.pos, "★ TP1"); if (Math.abs(p.tp2 - p.tp1) > 1e-9) pl(p.tp2, C.pos, "★ TP2");
     }
     else s.zones.forEach((z) => { pl(z.top, C.strong, z.kind); pl(z.bottom, C.strong, ""); });
-    const al = (c: string, a: number) => c.replace(/^rgba?\(([^)]+?)(,\s*[\d.]+)?\)$/, (_, rgb) => `rgba(${rgb.split(",").slice(0, 3).join(",")}, ${a})`);
+    const al = (c: string, a: number) => { const m = c.match(/[\d.]+/g); return m && m.length >= 3 ? `rgba(${m[0]}, ${m[1]}, ${m[2]}, ${a.toFixed(2)})` : c; };
     for (const b of bands) { const col = b.kind === "sl" ? C.neg : b.kind === "tp" ? C.pos : C.accent; const a = 0.35 + 0.65 * b.strength; const style = b.strength >= 0.99 || b.kind === "entry" ? LineStyle.Solid : LineStyle.Dotted;
       cs.createPriceLine({ price: b.hi, color: al(col, a), lineWidth: b.kind === "entry" ? 2 : 1, lineStyle: style, axisLabelVisible: true, title: b.label });
       if (b.hi - b.lo > 1e-9) cs.createPriceLine({ price: b.lo, color: al(col, a), lineWidth: 2, lineStyle: style, axisLabelVisible: false, title: "" }); }
