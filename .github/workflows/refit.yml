@@ -1,0 +1,15 @@
+name: aura-weekly-refit
+on:
+  schedule: [{ cron: "30 7 * * *" }]   # daily 07:30 UTC; no-op unless a new week was published (drops are Saturdays ~06:00 UTC)
+  workflow_dispatch: {}
+jobs:
+  refit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: npm ci --ignore-scripts
+      - run: npm run refit
+        env: { DATABASE_URL: "${{ secrets.DATABASE_URL }}" }

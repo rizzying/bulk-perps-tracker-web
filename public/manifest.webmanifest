@@ -1,0 +1,4 @@
+{ "name": "Bulk Perps Tracker", "short_name": "Bulk Perps", "description": "Read-only Bulk perps tracker: positions, liq alerts, funding, trade setups, AURA estimate, journal.",
+  "start_url": "/", "scope": "/", "display": "standalone", "orientation": "any", "background_color": "#08080a", "theme_color": "#08080a",
+  "icons": [ { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }, { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+             { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" } ] }

@@ -1,0 +1,24 @@
+name: sample-and-alerts
+on:
+  schedule: [{ cron: "*/15 * * * *" }]   # GitHub may delay scheduled runs by several minutes under load
+  workflow_dispatch: {}
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      HAS_VAPID: ${{ secrets.VAPID_PRIVATE_KEY != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: npm ci --ignore-scripts
+      - run: npm run sample
+        env: { DATABASE_URL: "${{ secrets.DATABASE_URL }}" }
+      - run: npm run alerts:check
+        if: ${{ env.HAS_VAPID == 'true' }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
