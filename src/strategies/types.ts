@@ -10,5 +10,5 @@ export type Signal = {
   invalidation: string; freshnessBars: number; reasons: string[];
   levels: Level[]; // static levels this strategy contributes to zone confluence (VWAP, OB, FVG, fib, liq clusters…)
 };
-export type Ctx = { now: number; emaCfg?: { fast: number; slow: number; thirdOn: boolean; third: number }; funding?: { rate: number; pct: number | null }; oi?: { changePct: number | null }; liq?: { price: number; long: number; short: number }[] };
+export type Ctx = { now: number; h1?: Candle[]; h4?: Candle[]; emaCfg?: { fast: number; slow: number; thirdOn: boolean; third: number }; funding?: { rate: number; pct: number | null }; oi?: { changePct: number | null }; liq?: { price: number; long: number; short: number }[] };
 export type Strategy = { id: StrategyId; name: string; family: Family; short: string; evaluate: (c: Candle[], ctx: Ctx) => Signal };

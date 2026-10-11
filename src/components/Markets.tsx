@@ -77,7 +77,7 @@ export function Markets() {
   const setups = useMemo(() => Object.fromEntries(Object.entries(data).map(([s, m]) => [s, evaluateSetup(s, m.htf, m.ltf, m.trading, emaCfg, mode, { h1: m.heat, minRR })])) as Record<string, SetupResult>, [data, emaCfg, mode, minRR]);
   const d = data[sym];
   const [bands, setBands] = useState<Band[]>([]);
-  const ctx = useMemo(() => d ? { emaCfg, now: d.ltf[d.ltf.length - 1]?.t ?? Date.now(), ...fundingCtx(sym, d.funding, d.oiUsd), liq: estimateLiqMap(d.heat, { maxLev: d.maxLev, oiUsd: d.oiUsd }).bins } : { now: Date.now(), emaCfg }, [d, sym, emaCfg]);
+  const ctx = useMemo(() => d ? { emaCfg, h1: d.heat, h4: d.htf, now: d.ltf[d.ltf.length - 1]?.t ?? Date.now(), ...fundingCtx(sym, d.funding, d.oiUsd), liq: estimateLiqMap(d.heat, { maxLev: d.maxLev, oiUsd: d.oiUsd }).bins } : { now: Date.now(), emaCfg }, [d, sym, emaCfg]);
   return (
     <>
       <section className="card">

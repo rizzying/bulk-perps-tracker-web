@@ -166,3 +166,4 @@ details.classic>summary{cursor:pointer;list-style:none}details.classic>summary::
 @media (max-width:63.99rem){.zones{grid-template-columns:1fr}}
 .findrow .findbtn:not(.primary){background:var(--field)!important;color:var(--ink)!important;box-shadow:var(--ring)!important;font-weight:600!important}
 .chart-reset{position:absolute;top:8px;right:84px;z-index:5;font-size:12px!important;padding:4px 10px!important;background:var(--surface)!important;color:var(--ink)!important;box-shadow:var(--ring)!important;border-radius:var(--r-control)!important}
+@media (max-width:47.99rem){.consensus.sidecard{position:static;max-height:none;overflow:visible}}

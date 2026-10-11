@@ -113,26 +113,30 @@ function BtNote({ label }: { label: "High" | "Medium" | "Mixed" }) {
   return <div className="small muted">Backtest (both-sides consensus, Hyperliquid {CONSENSUS_BACKTEST.period}): "{label}" hit TP1 {Math.round(bt.win * 100)}% ({bt.n} trades, avg {bt.avgR >= 0 ? "+" : ""}{bt.avgR.toFixed(2)}R). Higher agreement did not do better historically. Agreement is not a win probability. Not financial advice.</div>;
 }
 function SideCard({ r, sym }: { r: SideResult; sym: string }) {
+  // not sticky: all 3 zones must be visible in the page flow on mobile
   const L = r.side === "long"; const S = r.side.toUpperCase();
-  return <div className={"consensus " + r.side}>
+  return <div className={"consensus sidecard " + r.side}>
     <div className="cs-top">
       <div><div className="lbl">{sym} · find {r.side}</div><div className={"cs-dir " + (r.status === "ready" ? r.side : "neutral")}>{r.status === "ready" ? `${S} READY` : r.status === "wait" ? `WAIT · ${S}` : `NO ${S} ZONE`}</div></div>
       <span className={"badge lvl-" + r.label}>{r.label}</span>
       <div className="cs-agree" title={AGREE_TIP}><div className="lbl">{r.side} agreement <span className="info" tabIndex={0} aria-label={AGREE_TIP}>ⓘ</span></div>
         <div className="meter"><div style={{ width: `${Math.round(r.agreement * 100)}%` }} /></div>
-        <div className="mono small">{Math.round(r.agreement * 100)}% · {r.breadth.agree} of {r.breadth.active} active families say {r.side}</div></div>
+        <div className="mono small">{r.breadth.active === 0
+          ? `${r.breadth.agree} firing · ${r.pendingFams} famil${r.pendingFams === 1 ? "y" : "ies"} pending ${r.side}`
+          : `${Math.round(r.agreement * 100)}% · ${r.breadth.agree} of ${r.breadth.active} active families say ${r.side}${r.pendingFams ? ` · ${r.pendingFams} pending` : ""}`}</div></div>
       <div className="tfchips"><span className={"chip tf " + (r.biasDir ?? "")}>4h bias: {r.biasDir ?? "–"}</span></div>
     </div>
     {r.opposing.length > 0 && <div className="conflict">⚠ Against this {r.side}: {r.opposing.join(" · ")}</div>}
     {r.zones.length ? <>
-      <div><b>{r.status === "ready" ? `★ Entry now near ${px(r.zones[0].entryPx)}` : <>★ Wait for price at <span className="mono">{px(r.zones[0].entry.mid)}</span></>}</b> <span className="muted small">(best of {r.zones.length} {r.side} zone{r.zones.length > 1 ? "s" : ""}, ranked by family confluence, then side and distance)</span></div>
+      <div><b>{r.status === "ready" ? `★ Entry now near ${px(r.zones[0].entryPx)}` : <>★ Wait for price at <span className="mono">{px(r.zones[0].entry.mid)}</span></>}</b> <span className="muted small">(best of {r.zones.length} {r.side} zone{r.zones.length > 1 ? "s" : ""}: strategy confluence first, then 1h/4h structure)</span></div>
       <div className="zones">{r.zones.map((zn, k) => <div key={k} className={"zone" + (zn.best ? " best" : "")}>
-        <div className="prow"><b>{zn.best ? "★ " : ""}Zone {k + 1}</b><span className={"pill dir " + (zn.status === "ready" ? r.side : "neutral")}>{zn.status === "ready" ? "ready" : `wait · ${zn.distAtr.toFixed(1)} ATR`}</span><span className={"badge lvl-" + zn.label}>{zn.label}</span></div>
+        <div className="prow"><b>{zn.best ? "★ " : ""}Zone {k + 1}</b><span className={"pill dir " + (zn.status === "ready" ? r.side : "neutral")}>{zn.status === "ready" ? "ready" : `wait · ${zn.distAtr.toFixed(1)} ATR`}</span>{zn.structureOnly ? <span className="badge corr">structure only</span> : <span className={"badge lvl-" + zn.label}>{zn.label}</span>}</div>
         <div className="kv"><span>Entry</span><b>{px(zn.entry.lo)} – {px(zn.entry.hi)}</b><span>SL</span><b>{px(zn.sl)}</b><span>TP1</span><b>{px(zn.tp1)} · {zn.rr1.toFixed(2)}R</b><span>TP2</span><b>{px(zn.tp2)} · <span className={zn.meetsRR ? "pos" : "neg"}>{zn.rr2.toFixed(2)}R</span></b>
-          <span>Breadth</span><b>{zn.families} of {zn.famTotal} families · {zn.liveCount} firing</b></div>
-        <div className="small muted">{zn.contributors.join(", ")} <span title="* = pending (would trigger here)">(* pending)</span></div>
+          <span>Breadth</span><b>{zn.structureOnly ? "no selected strategy here" : `${zn.families} of ${zn.famTotal} families · ${zn.liveCount} firing`}</b></div>
+        <div className="small muted">{zn.contributors.join(", ")}{!zn.structureOnly && <span title="* = pending (would trigger here)"> (* pending)</span>}</div>
         {zn.waitFor.length > 0 && <details className="small" open={zn.best}><summary>Still needs to happen ({zn.waitFor.length})</summary><ul className="checks">{zn.waitFor.map((w, i) => <li key={i}>○ {w}</li>)}</ul></details>}
       </div>)}</div>
+      {r.fillNote && <div className="small muted">{r.fillNote}</div>}
       <div className="small muted">Min reward : risk {r.minRR}R judged on TP2. Waiting zones are drawn dashed on the chart. Not a signal yet until ready.</div>
     </> : <div className="muted small">No {r.side} confluence zone within 6 ATR. Stay flat.</div>}
     <BtNote label={r.label} />

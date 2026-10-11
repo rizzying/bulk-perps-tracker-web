@@ -54,3 +54,28 @@ describe("Double EMA + RSI (classic) and ranked zones", () => {
     }
   });
 });
+
+describe("3 zones per side with structure fill", () => {
+  // choppy range so both sides have unmitigated 1h/4h swings
+  const zig = (n: number, step: number) => mk(n, (i) => 100 + 8 * Math.sin(i / (6 * step)) + 3 * Math.sin(i / (1.7 * step)));
+  const l = zig(300, 1), h1 = zig(400, 1).map((k, i) => ({ ...k, t: k.t * 1 + i })), h4 = zig(240, 1);
+  it("a single ticked strategy still gets up to 3 distinct zones, filling with 'structure only' swing zones", () => {
+    for (const side of ["long", "short"] as const) for (const ids of [["dema"], ["rsi"], ["funding"]] as const) {
+      const r = findSide([...ids], l, h4, { now: l[299].t, h1, h4 }, side, 1.5);
+      expect(r.zones.length === 3 || r.fillNote.length > 0).toBe(true);
+      for (let i = 0; i < r.zones.length; i++) for (let j = i + 1; j < r.zones.length; j++) { const a = r.zones[i].entry, b = r.zones[j].entry; expect(a.lo > b.hi || b.lo > a.hi).toBe(true); }
+      for (const z of r.zones) { if (z.structureOnly) { expect(z.contributors.join()).toMatch(/structure only/); expect(z.waitFor.join()).toMatch(/structure only/); } expect(side === "long" ? z.sl < z.entry.lo : z.sl > z.entry.hi).toBe(true); }
+    }
+  });
+  it("Double EMA + RSI proposes 1h/4h swing zones itself (not just one EMA level)", async () => {
+    const { planSide } = await import("../src/strategies/side");
+    const p = planSide("dema", l, { now: 0, h1, h4 }, "short", 1); expect(p.alts.length).toBeGreaterThan(0);
+  });
+  it("header data: pending families are counted when nothing fires; explains when no structure is available", () => {
+    const r = findSide(["dema"], l, h4, { now: l[299].t, h1, h4 }, "short", 1.5);
+    if (r.breadth.active === 0) expect(r.pendingFams).toBeGreaterThan(0);
+    const n = findSide(["funding"], flat300, flat300, { now: 0 }, "short", 1.5);
+    if (n.zones.length < 3) expect(n.fillNote).toMatch(/1h\/4h|Only/);
+  });
+});
+const flat300 = mk(300, (i) => 100 + 0.01 * Math.sin(i));
