@@ -7,13 +7,15 @@ import { estimateLiqMap, LiqBin, DEFAULT_TIERS } from "../ta/liqmap";
 import { tokenColor, useThemeName } from "../ui/theme";
 import { useStore } from "../store";
 import { px, usd } from "../fmt";
+import { StrategyPicker, type Band } from "./StrategyPicker";
+import { fundingCtx } from "../strategies/buffer";
 
 const MS: Record<string, number> = { "15m": 9e5, "1h": 36e5, "4h": 144e5 };
 const toT = (ms: number) => Math.floor(ms / 1000) as UTCTimestamp;
 // 07:00 UTC+7 -> chart displays in local time
 const local = (ms: number) => toT(ms + 7 * 3600e3);
 
-type MarketData = { htf: Candle[]; ltf: Candle[]; heat: Candle[]; trading: boolean; maxLev: number; oiUsd: number };
+type MarketData = { htf: Candle[]; ltf: Candle[]; heat: Candle[]; trading: boolean; maxLev: number; oiUsd: number; funding: number };
 async function loadMarket(sym: string, info: Map<string, { status: string; maxLeverage: number }>): Promise<MarketData> {
   const now = Date.now();
   const htf = await client.klines(sym, HTF, now - 60 * 86400e3);
@@ -21,7 +23,7 @@ async function loadMarket(sym: string, info: Map<string, { status: string; maxLe
   const heat = await client.klines(sym, "1h", now - 21 * 86400e3); // 1h: swing zones + heatmap
   const t = await client.ticker(sym);
   const mi = info.get(sym); const trading = mi?.status === "TRADING";
-  return { htf, ltf, heat, trading, maxLev: mi?.maxLeverage ?? 20, oiUsd: t.openInterest * t.markPrice };
+  return { htf, ltf, heat, trading, maxLev: mi?.maxLeverage ?? 20, oiUsd: t.openInterest * t.markPrice, funding: t.fundingRate };
 }
 
 const EK = "bpt.emaCfg.v1";
@@ -74,17 +76,18 @@ export function Markets() {
 
   const setups = useMemo(() => Object.fromEntries(Object.entries(data).map(([s, m]) => [s, evaluateSetup(s, m.htf, m.ltf, m.trading, emaCfg, mode, { h1: m.heat, minRR })])) as Record<string, SetupResult>, [data, emaCfg, mode, minRR]);
   const d = data[sym];
+  const [bands, setBands] = useState<Band[]>([]);
+  const ctx = useMemo(() => d ? { now: d.ltf[d.ltf.length - 1]?.t ?? Date.now(), ...fundingCtx(sym, d.funding, d.oiUsd), liq: estimateLiqMap(d.heat, { maxLev: d.maxLev, oiUsd: d.oiUsd }).bins } : { now: Date.now() }, [d, sym]);
   return (
     <>
       <section className="card">
-        <h2>Trade Setup <span className="muted small">SMC + {emaLabel(emaCfg)} + RSI · {HTF} bias / {LTF} trigger · BTC, ETH, SOL only · rule-based, not financial advice, never places orders{updated ? ` · updated ${new Date(updated).toLocaleTimeString()}` : ""}</span></h2>
+        <h2>Trade Setup <span className="muted small">Strategy picker · {HTF} bias / {LTF} entry · BTC, ETH, SOL · rule-based, not financial advice, never places orders{updated ? ` · updated ${new Date(updated).toLocaleTimeString()}` : ""}</span></h2>
         {err && <div className="err">{err}</div>}
-        <div className="row modes" style={{ alignItems: "center", gap: 8, marginBottom: 12 }}>
-          <button className={"mode big long " + (mode === "long" ? "on" : "")} onClick={() => setMode(mode === "long" ? "auto" : "long")}>▲ Find Long</button>
-          <button className={"mode big short " + (mode === "short" ? "on" : "")} onClick={() => setMode(mode === "short" ? "auto" : "short")}>▼ Find Short</button>
-          <button className={"mode " + (mode === "auto" ? "on" : "")} onClick={() => setMode("auto")}>Auto (both sides)</button>
-          <span className="muted small">{mode === "auto" ? "Evaluates long and short; shows the best. Counter-trend setups are allowed but marked and penalised." : `Searching ${mode} only: best entry from current OB/FVG zones, EMAs, RSI and liquidity. Press again for Auto.`}</span>
-        </div>
+        <div className="symtabs" role="tablist">{SETUP_SYMBOLS.map((s) => <button key={s} role="tab" aria-selected={s === sym} className={"tab " + (s === sym ? "on" : "")} onClick={() => setSym(s)}>{s.replace("-USD", "")}</button>)}</div>
+        <StrategyPicker sym={sym} ltf={d?.ltf} htf={d?.htf} ctx={ctx} onBands={setBands} />
+      </section>
+      <section className="card">
+        <details className="classic"><summary><h2 style={{ display: "inline" }}>Classic SMC swing-zone engine</h2> <span className="muted small">the original SMC + {emaLabel(emaCfg)} + RSI checklist with swing-zone candidates</span></summary>
         <EmaSettings cfg={emaCfg} onChange={setEmaCfg} />
         <div className="row" style={{ alignItems: "center", gap: 10, margin: "-4px 0 12px" }}>
           <label><b className="small">Minimum reward : risk</b> 1 : <input type="number" min={1} max={20} step={0.5} value={minRR} onChange={(e) => setMinRR(+e.target.value)} style={{ width: 56 }} /></label>
@@ -99,13 +102,14 @@ export function Markets() {
             </button>); })}
         </div>
         {setups[sym] && <SetupDetail r={setups[sym]} />}
+        </details>
       </section>
       <section className="card">
         <h2>{sym} chart
           <span className="seg">{(["15m", "1h", "4h"] as const).map((x) => <button key={x} className={"tab " + (tf === x ? "on" : "")} onClick={() => setTf(x)}>{x}</button>)}</span>
           <label className="small" style={{ marginLeft: 12 }}><input type="checkbox" checked={showHeat} onChange={(e) => setShowHeat(e.target.checked)} /> Liquidation heatmap (ESTIMATE)</label>
         </h2>
-        {d ? <Chart key={sym + tf} sym={sym} tf={tf} d={d} setup={setups[sym]} ema={emaCfg} showHeat={showHeat} /> : <div className="muted">Loading candles…</div>}
+        {d ? <Chart key={sym + tf} sym={sym} tf={tf} d={d} setup={setups[sym]} ema={emaCfg} showHeat={showHeat} bands={bands} /> : <div className="muted">Loading candles…</div>}
       </section>
     </>
   );
@@ -161,7 +165,7 @@ function SetupDetail({ r }: { r: SetupResult }) {
 }
 
 const zoomMemo = new Map<string, any>(); // keeps the user's zoom when data refreshes
-function Chart({ sym, tf, d, setup, ema: emaCfg, showHeat }: { sym: string; tf: "15m" | "1h" | "4h"; d: MarketData; setup: SetupResult; ema: EmaCfg; showHeat: boolean }) {
+function Chart({ sym, tf, d, setup, ema: emaCfg, showHeat, bands }: { sym: string; tf: "15m" | "1h" | "4h"; d: MarketData; setup: SetupResult; ema: EmaCfg; showHeat: boolean; bands: Band[] }) {
   const box = useRef<HTMLDivElement>(null), rbox = useRef<HTMLDivElement>(null);
   const [heatEls, setHeatEls] = useState<{ y: number; h: number; long: number; short: number; price: number }[]>([]);
   const [candles, setCandles] = useState<Candle[] | null>(null);
@@ -193,7 +197,7 @@ function Chart({ sym, tf, d, setup, ema: emaCfg, showHeat }: { sym: string; tf: 
     const rs = rc.addLineSeries({ color: C.accent, lineWidth: 1, priceLineVisible: false });
     const rv = rsi(closes, 14); rs.setData(candles.map((k, i) => ({ time: local(k.t), value: rv[i] })).filter((x) => !isNaN(x.value)));
     [70, 30].forEach((v) => rs.createPriceLine({ price: v, color: C.strong, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false, title: "" }));
-    const s = setup; const pl = (price: number | undefined, color: string, title: string) => price != null && cs.createPriceLine({ price, color, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title });
+    const s: SetupResult = bands.length ? ({ ...setup, verdict: "NO TRADE", best: { ...setup.best, plan: undefined }, zones: [] } as SetupResult) : setup; const pl = (price: number | undefined, color: string, title: string) => price != null && cs.createPriceLine({ price, color, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title });
     if (s.verdict !== "NO TRADE") { pl(s.entry?.low, C.ink2, "entry"); pl(s.entry?.high, C.ink2, "entry"); pl(s.stop, C.neg, "SL"); pl(s.tp1, C.pos, "TP1"); pl(s.tp2, C.pos, "TP2"); }
     else if (s.best.plan) {
       const p = s.best.plan; const d = s.best.dir;
@@ -201,6 +205,10 @@ function Chart({ sym, tf, d, setup, ema: emaCfg, showHeat }: { sym: string; tf: 
       pl(p.entry.high, C.warn, `★ ${d} zone`); pl(p.entry.low, C.warn, ""); pl(p.stop, C.neg, "★ SL"); pl(p.tp1, C.pos, "★ TP1"); if (Math.abs(p.tp2 - p.tp1) > 1e-9) pl(p.tp2, C.pos, "★ TP2");
     }
     else s.zones.forEach((z) => { pl(z.top, C.strong, z.kind); pl(z.bottom, C.strong, ""); });
+    const al = (c: string, a: number) => c.replace(/^rgba?\(([^)]+?)(,\s*[\d.]+)?\)$/, (_, rgb) => `rgba(${rgb.split(",").slice(0, 3).join(",")}, ${a})`);
+    for (const b of bands) { const col = b.kind === "sl" ? C.neg : b.kind === "tp" ? C.pos : C.accent; const a = 0.35 + 0.65 * b.strength; const style = b.strength >= 0.99 || b.kind === "entry" ? LineStyle.Solid : LineStyle.Dotted;
+      cs.createPriceLine({ price: b.hi, color: al(col, a), lineWidth: b.kind === "entry" ? 2 : 1, lineStyle: style, axisLabelVisible: true, title: b.label });
+      if (b.hi - b.lo > 1e-9) cs.createPriceLine({ price: b.lo, color: al(col, a), lineWidth: 2, lineStyle: style, axisLabelVisible: false, title: "" }); }
     myLiqs.forEach((m) => cs.createPriceLine({ price: m.liq, color: C.liq, lineWidth: 2, lineStyle: LineStyle.Solid, axisLabelVisible: true, title: `YOUR ${m.side} LIQ` }));
     const saved = zoomMemo.get(sym + tf); if (saved) ch.timeScale().setVisibleLogicalRange(saved); else { ch.timeScale().fitContent(); } rc.timeScale().fitContent();
     ch.timeScale().subscribeVisibleLogicalRangeChange((r) => { if (r) zoomMemo.set(sym + tf, r); });
@@ -216,7 +224,7 @@ function Chart({ sym, tf, d, setup, ema: emaCfg, showHeat }: { sym: string; tf: 
     ro.observe(box.current);
     const iv = setInterval(drawHeat, 1000); // price scale autoscale changes
     return () => { clearInterval(iv); ro.disconnect(); ch.remove(); rc.remove(); };
-  }, [candles, heat, myLiqs, setup, emaCfg, themeName]);
+  }, [candles, heat, myLiqs, setup, emaCfg, themeName, bands]);
 
   const tot = heat.bins.reduce((a, b) => ({ l: a.l + b.long, s: a.s + b.short }), { l: 0, s: 0 });
   const topLong = [...heat.bins].sort((a, b) => b.long - a.long)[0], topShort = [...heat.bins].sort((a, b) => b.short - a.short)[0];
