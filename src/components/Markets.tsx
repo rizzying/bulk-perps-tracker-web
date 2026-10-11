@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createChart, IChartApi, ISeriesApi, LineStyle, CrosshairMode, UTCTimestamp } from "lightweight-charts";
+import { createChart, IChartApi, ISeriesApi, IPriceLine, LineStyle, CrosshairMode, UTCTimestamp } from "lightweight-charts";
 import { client } from "../api/client";
 import { Candle, ema, rsi } from "../ta/indicators";
 import { evaluateSetup, SETUP_SYMBOLS, SetupResult, HTF, LTF, EmaCfg, DEFAULT_EMA, sanitizeEma, emaLabel, Mode, SideResult , histHit, histLabel } from "../ta/setup";
@@ -164,7 +164,9 @@ function SetupDetail({ r }: { r: SetupResult }) {
   );
 }
 
-const zoomMemo = new Map<string, any>(); // keeps the user's zoom when data refreshes
+const zoomMemo = new Map<string, any>(); // last user range per market/timeframe (debug only; we fit on market/tf change)
+/** Fit: last ~120 bars (not the whole history, whose early launch wicks squash the scale) + auto-scale on. */
+function fitView(I: { ch: IChartApi; candles: Candle[] }) { const n = I.candles.length; I.ch.priceScale("right").applyOptions({ autoScale: true }); if (n > 140) I.ch.timeScale().setVisibleLogicalRange({ from: n - 120, to: n + 3 }); else I.ch.timeScale().fitContent(); }
 function Chart({ sym, tf, d, setup, ema: emaCfg, showHeat, bands }: { sym: string; tf: "15m" | "1h" | "4h"; d: MarketData; setup: SetupResult; ema: EmaCfg; showHeat: boolean; bands: Band[] }) {
   const box = useRef<HTMLDivElement>(null), rbox = useRef<HTMLDivElement>(null);
   const [heatEls, setHeatEls] = useState<{ y: number; h: number; long: number; short: number; price: number }[]>([]);
@@ -183,55 +185,83 @@ function Chart({ sym, tf, d, setup, ema: emaCfg, showHeat, bands }: { sym: strin
   }, [tf, d]);
 
   const themeName = useThemeName();
+  type Inst = { ch: IChartApi; rc: IChartApi; cs: ISeriesApi<"Candlestick">; rs: ISeriesApi<"Line">; emas: ISeriesApi<"Line">[]; lines: IPriceLine[]; zone: number[]; candles: Candle[]; fitted: boolean };
+  const inst = useRef<Inst | null>(null); const [ver, setVer] = useState(0);
+  const hasData = !!candles?.length;
+  // 1) create the chart ONCE per market / timeframe / theme. Overlay toggles never recreate it (that was what reset zoom + squashed it).
   useEffect(() => {
-    if (!box.current || !rbox.current || !candles?.length) return;
-    const C = { bg: tokenColor("--surface"), ink2: tokenColor("--ink-2"), soft: tokenColor("--line-soft"), line: tokenColor("--line"), strong: tokenColor("--line-strong"), pos: tokenColor("--pos"), neg: tokenColor("--neg"), accent: tokenColor("--accent"), warn: tokenColor("--warn-ink"), liq: tokenColor("--liq") };
-    const opts = { layout: { background: { color: C.bg }, textColor: C.ink2, fontFamily: "Geist Mono Variable, ui-monospace, monospace" }, grid: { vertLines: { color: C.soft }, horzLines: { color: C.soft } }, crosshair: { mode: CrosshairMode.Normal }, timeScale: { timeVisible: true, borderColor: C.line }, rightPriceScale: { borderColor: C.line } };
+    if (!box.current || !rbox.current || !hasData) return;
+    const C = { bg: tokenColor("--surface"), ink2: tokenColor("--ink-2"), soft: tokenColor("--line-soft"), line: tokenColor("--line"), strong: tokenColor("--line-strong"), accent: tokenColor("--accent"), pos: tokenColor("--pos"), neg: tokenColor("--neg") };
+    const opts = { layout: { background: { color: C.bg }, textColor: C.ink2, fontFamily: "Geist Mono Variable, ui-monospace, monospace" }, grid: { vertLines: { color: C.soft }, horzLines: { color: C.soft } }, crosshair: { mode: CrosshairMode.Normal }, timeScale: { timeVisible: true, borderColor: C.line }, rightPriceScale: { borderColor: C.line, autoScale: true }, handleScale: { axisDoubleClickReset: { time: true, price: true } } };
     const ch: IChartApi = createChart(box.current, { ...opts, height: 420, width: box.current.clientWidth });
     const rc: IChartApi = createChart(rbox.current, { ...opts, height: 110, width: rbox.current.clientWidth });
-    const cs = ch.addCandlestickSeries({ upColor: C.pos, downColor: C.neg, borderVisible: false, wickUpColor: C.pos, wickDownColor: C.neg });
-    cs.setData(candles.map((k) => ({ time: local(k.t), open: k.o, high: k.h, low: k.l, close: k.c })));
-    const closes = candles.map((k) => k.c);
-    const line = (n: number, color: string) => { const s = ch.addLineSeries({ color, lineWidth: 1, priceLineVisible: false, lastValueVisible: false }); const e = ema(closes, n); s.setData(candles.map((k, i) => ({ time: local(k.t), value: e[i] })).filter((x) => !isNaN(x.value))); };
-    [emaCfg.fast, emaCfg.slow, ...(emaCfg.thirdOn ? [emaCfg.third] : [])].forEach((n, i) => line(n, i === 0 ? C.accent : i === 1 ? C.warn : C.ink2));
+    const me: Partial<Inst> = { ch, rc, emas: [], lines: [], zone: [], candles: [], fitted: false };
+    // autoscale = visible candles (+ the active zone if it's within ±8% of price). Heatmap, far price lines and your-liq lines are excluded.
+    const cs = ch.addCandlestickSeries({ upColor: C.pos, downColor: C.neg, borderVisible: false, wickUpColor: C.pos, wickDownColor: C.neg,
+      autoscaleInfoProvider: () => { const k = me.candles!; const r = ch.timeScale().getVisibleLogicalRange(); if (!k.length) return null;
+        const a = Math.max(0, Math.floor(r?.from ?? 0)), b = Math.min(k.length - 1, Math.ceil(r?.to ?? k.length - 1)); if (b < a) return null;
+        let lo = Infinity, hi = -Infinity; for (let i = a; i <= b; i++) { lo = Math.min(lo, k[i].l); hi = Math.max(hi, k[i].h); }
+        const px = k[b].c; for (const z of me.zone!) if (Math.abs(z - px) / px <= 0.08) { lo = Math.min(lo, z); hi = Math.max(hi, z); }
+        return { priceRange: { minValue: lo, maxValue: hi }, margins: { above: 8, below: 8 } }; } });
     const rs = rc.addLineSeries({ color: C.accent, lineWidth: 1, priceLineVisible: false });
-    const rv = rsi(closes, 14); rs.setData(candles.map((k, i) => ({ time: local(k.t), value: rv[i] })).filter((x) => !isNaN(x.value)));
     [70, 30].forEach((v) => rs.createPriceLine({ price: v, color: C.strong, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false, title: "" }));
-    const s: SetupResult = bands.length ? ({ ...setup, verdict: "NO TRADE", best: { ...setup.best, plan: undefined }, zones: [] } as SetupResult) : setup; const pl = (price: number | undefined, color: string, title: string) => price != null && cs.createPriceLine({ price, color, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title });
-    if (s.verdict !== "NO TRADE") { pl(s.entry?.low, C.ink2, "entry"); pl(s.entry?.high, C.ink2, "entry"); pl(s.stop, C.neg, "SL"); pl(s.tp1, C.pos, "TP1"); pl(s.tp2, C.pos, "TP2"); }
-    else if (s.best.plan) {
-      const p = s.best.plan; const d = s.best.dir;
-      p.candidates.forEach((c, i) => { if (c.best) return; pl(c.zone.top, C.strong, `${d} zone ${i + 1}`); pl(c.zone.bottom, C.strong, ""); });
-      pl(p.entry.high, C.warn, `★ ${d} zone`); pl(p.entry.low, C.warn, ""); pl(p.stop, C.neg, "★ SL"); pl(p.tp1, C.pos, "★ TP1"); if (Math.abs(p.tp2 - p.tp1) > 1e-9) pl(p.tp2, C.pos, "★ TP2");
-    }
-    else s.zones.forEach((z) => { pl(z.top, C.strong, z.kind); pl(z.bottom, C.strong, ""); });
+    Object.assign(me, { cs, rs }); inst.current = me as Inst;
+    ch.timeScale().subscribeVisibleLogicalRangeChange((r) => { if (r) { rc.timeScale().setVisibleLogicalRange(r); if (me.fitted) zoomMemo.set(sym + tf, r); } });
+    const ro = new ResizeObserver(() => { ch.applyOptions({ width: box.current!.clientWidth }); rc.applyOptions({ width: rbox.current!.clientWidth }); });
+    ro.observe(box.current);
+    (window as any).__bptChart = () => ({ range: ch.timeScale().getVisibleLogicalRange(), autoScale: ch.priceScale("right").options().autoScale, lines: me.lines!.length, bars: me.candles!.length, zone: me.zone });
+    setVer((v) => v + 1);
+    return () => { ro.disconnect(); inst.current = null; ch.remove(); rc.remove(); };
+  }, [sym, tf, themeName, hasData]);
+  // 2) data: candles + EMAs + RSI. Keeps the user's time range on refresh; fits on a new market/timeframe.
+  useEffect(() => {
+    const I = inst.current!; if (!inst.current || !candles?.length) return;
+    I.candles = candles; I.cs.setData(candles.map((k) => ({ time: local(k.t), open: k.o, high: k.h, low: k.l, close: k.c })));
+    const closes = candles.map((k) => k.c); const cols = [tokenColor("--accent"), tokenColor("--warn-ink"), tokenColor("--ink-2")];
+    I.emas.forEach((s) => I.ch.removeSeries(s)); I.emas = [emaCfg.fast, emaCfg.slow, ...(emaCfg.thirdOn ? [emaCfg.third] : [])].map((n, i) => { const s = I.ch.addLineSeries({ color: cols[i], lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false }); const e = ema(closes, n); s.setData(candles.map((k, j) => ({ time: local(k.t), value: e[j] })).filter((x) => !isNaN(x.value))); return s; });
+    const rv = rsi(closes, 14); I.rs.setData(candles.map((k, i) => (isNaN(rv[i]) ? { time: local(k.t) } : { time: local(k.t), value: rv[i] }))); // whitespace keeps bar indexes aligned with the price pane
+    if (!I.fitted) { fitView(I); I.fitted = true; } // new market/timeframe → fit; later refreshes keep the user's range
+    I.ch.priceScale("right").applyOptions({ autoScale: true });
+  }, [ver, candles, emaCfg]);
+  // 3) overlays: price lines for zones / classic plan / your liq — replaced in place, autoscale re-enabled afterwards.
+  useEffect(() => {
+    const I = inst.current; if (!I) return; const cs = I.cs;
+    I.lines.forEach((l) => cs.removePriceLine(l)); I.lines = [];
+    const C = { ink2: tokenColor("--ink-2"), strong: tokenColor("--line-strong"), pos: tokenColor("--pos"), neg: tokenColor("--neg"), accent: tokenColor("--accent"), warn: tokenColor("--warn-ink"), liq: tokenColor("--liq") };
+    const add = (o: Parameters<typeof cs.createPriceLine>[0]) => I.lines.push(cs.createPriceLine(o));
+    const pl = (price: number | undefined, color: string, title: string) => price != null && add({ price, color, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: !!title, title });
+    const zone: number[] = [];
+    if (!bands.length) { const s = setup;
+      if (s.verdict !== "NO TRADE") { pl(s.entry?.low, C.ink2, "entry"); pl(s.entry?.high, C.ink2, "entry"); pl(s.stop, C.neg, "SL"); pl(s.tp1, C.pos, "TP1"); pl(s.tp2, C.pos, "TP2"); }
+      else if (s.best.plan) { const p = s.best.plan; const d = s.best.dir;
+        p.candidates.forEach((c, i) => { if (c.best) return; pl(c.zone.top, C.strong, `${d} zone ${i + 1}`); pl(c.zone.bottom, C.strong, ""); });
+        pl(p.entry.high, C.warn, `★ ${d} zone`); pl(p.entry.low, C.warn, ""); pl(p.stop, C.neg, "★ SL"); pl(p.tp1, C.pos, "★ TP1"); if (Math.abs(p.tp2 - p.tp1) > 1e-9) pl(p.tp2, C.pos, "★ TP2"); zone.push(p.entry.low, p.entry.high, p.stop); }
+      else s.zones.forEach((z) => { pl(z.top, C.strong, z.kind); pl(z.bottom, C.strong, ""); }); }
     const al = (c: string, a: number) => { const m = c.match(/[\d.]+/g); return m && m.length >= 3 ? `rgba(${m[0]}, ${m[1]}, ${m[2]}, ${a.toFixed(2)})` : c; };
     for (const b of bands) { const col = b.kind === "sl" ? C.neg : b.kind === "tp" ? C.pos : C.accent; const a = 0.35 + 0.65 * b.strength; const style = b.dashed ? LineStyle.Dashed : b.strength >= 0.99 || b.kind === "entry" ? LineStyle.Solid : LineStyle.Dotted;
-      cs.createPriceLine({ price: b.hi, color: al(col, a), lineWidth: b.kind === "entry" ? 2 : 1, lineStyle: style, axisLabelVisible: true, title: b.label });
-      if (b.hi - b.lo > 1e-9) cs.createPriceLine({ price: b.lo, color: al(col, a), lineWidth: 2, lineStyle: style, axisLabelVisible: false, title: "" }); }
-    myLiqs.forEach((m) => cs.createPriceLine({ price: m.liq, color: C.liq, lineWidth: 2, lineStyle: LineStyle.Solid, axisLabelVisible: true, title: `YOUR ${m.side} LIQ` }));
-    const saved = zoomMemo.get(sym + tf); if (saved) ch.timeScale().setVisibleLogicalRange(saved); else { ch.timeScale().fitContent(); } rc.timeScale().fitContent();
-    ch.timeScale().subscribeVisibleLogicalRangeChange((r) => { if (r) zoomMemo.set(sym + tf, r); });
-    // keep time scales in sync
-    ch.timeScale().subscribeVisibleLogicalRangeChange((r) => r && rc.timeScale().setVisibleLogicalRange(r));
-    const drawHeat = () => {
+      add({ price: b.hi, color: al(col, a), lineWidth: b.kind === "entry" ? 2 : 1, lineStyle: style, axisLabelVisible: true, title: b.label });
+      if (b.hi - b.lo > 1e-9) add({ price: b.lo, color: al(col, a), lineWidth: 2, lineStyle: style, axisLabelVisible: false, title: "" });
+      if (b.strength >= 0.99 && (b.kind === "entry" || b.kind === "sl")) zone.push(b.lo, b.hi); } // only the best/active zone may widen autoscale
+    myLiqs.forEach((m) => add({ price: m.liq, color: C.liq, lineWidth: 2, lineStyle: LineStyle.Solid, axisLabelVisible: true, title: `YOUR ${m.side} LIQ` }));
+    I.zone = zone; I.ch.priceScale("right").applyOptions({ autoScale: true });
+  }, [ver, bands, setup, myLiqs]);
+  // 4) heatmap overlay follows the price scale (DOM only, never part of autoscale)
+  useEffect(() => {
+    const drawHeat = () => { const I = inst.current; if (!I) return; const cs = I.cs;
       const max = Math.max(1e-9, ...heat.bins.map((b) => b.long + b.short));
-      const next = heat.bins.map((b) => { const y1 = cs.priceToCoordinate(b.price + heat.step / 2), y2 = cs.priceToCoordinate(b.price - heat.step / 2); return y1 == null || y2 == null ? null : { y: y1, h: Math.max(1, y2 - y1), long: b.long / max, short: b.short / max, price: b.price, raw: b }; }).filter(Boolean) as any;
-      setHeatEls((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
-    };
-    drawHeat(); ch.timeScale().subscribeVisibleLogicalRangeChange(drawHeat);
-    const ro = new ResizeObserver(() => { ch.applyOptions({ width: box.current!.clientWidth }); rc.applyOptions({ width: rbox.current!.clientWidth }); drawHeat(); });
-    ro.observe(box.current);
-    const iv = setInterval(drawHeat, 1000); // price scale autoscale changes
-    return () => { clearInterval(iv); ro.disconnect(); ch.remove(); rc.remove(); };
-  }, [candles, heat, myLiqs, setup, emaCfg, themeName, bands]);
+      const next = heat.bins.map((b) => { const y1 = cs.priceToCoordinate(b.price + heat.step / 2), y2 = cs.priceToCoordinate(b.price - heat.step / 2); return y1 == null || y2 == null ? null : { y: y1, h: Math.max(1, y2 - y1), long: b.long / max, short: b.short / max, price: b.price }; }).filter(Boolean) as any;
+      setHeatEls((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next)); };
+    drawHeat(); const iv = setInterval(drawHeat, 500); return () => clearInterval(iv);
+  }, [ver, heat]);
+  const resetView = () => { const I = inst.current; if (I) fitView(I); };
 
   const tot = heat.bins.reduce((a, b) => ({ l: a.l + b.long, s: a.s + b.short }), { l: 0, s: 0 });
   const topLong = [...heat.bins].sort((a, b) => b.long - a.long)[0], topShort = [...heat.bins].sort((a, b) => b.short - a.short)[0];
   return (
     <div>
       <div style={{ position: "relative" }}>
-        <div ref={box} />
+        <div ref={box} onDoubleClick={(e) => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); if (e.clientX > r.right - 90 || e.clientY > r.bottom - 30) resetView(); }} />
+        <button className="chart-reset" onClick={resetView} title="Reset view: fit recent candles and re-enable auto-scale (or double-click the price axis)">⤢ Reset view</button>
         {showHeat && <div className="heat" title="ESTIMATE – modelled, not actual positions">
           {heatEls.map((e, i) => <div key={i} className="hb" style={{ top: e.y, height: e.h }}>
             {e.long > 0.02 && <span className="hl" style={{ width: e.long * 100 + "%", opacity: 0.25 + e.long * 0.75 }} />}
