@@ -1,4 +1,12 @@
-node_modules
-dist
+*.key
+*.log
+*.p12
+*.pem
+.DS_Store
+.env
 .env*
+.env.*
 .vercel
+coverage
+dist
+node_modules
