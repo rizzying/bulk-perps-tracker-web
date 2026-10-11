@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { client } from "../api/client";
-import { BUNDLED, Model, Raw, WeekW, meanWeights, weekStart, weekEnd, weekOf, weekFeatures, refit, OI_STATS_FACTOR, VOL_KLINES_FACTOR, lastPlatformWeek } from "./estimator";
+import { BUNDLED, BUNDLED_WEEKS, Model, Raw, WeekW, meanWeights, weekStart, weekEnd, weekOf, weekFeatures, refit, OI_STATS_FACTOR, VOL_KLINES_FACTOR, lastPlatformWeek } from "./estimator";
 
 const NS = 1e6;
 
@@ -82,7 +82,8 @@ const MK = "aura.modelV2.v1";
 type Stored = { weekly: WeekW[]; platform: Model["platform"]; refitWeek: number; fittedOn: string };
 export function loadModel(): Model {
   try { const s: Stored | null = JSON.parse(localStorage.getItem(MK) || "null");
-    if (s?.weekly?.length) return { coef: meanWeights(s.weekly), weekly: s.weekly, platform: { ...BUNDLED.platform, ...s.platform }, fittedOn: s.fittedOn, refitWeek: s.refitWeek, source: "in-app" }; } catch { /* ignore */ }
+    if (s?.weekly?.some((x: WeekW) => !BUNDLED_WEEKS.includes(x.week))) { const wk = [...BUNDLED.weekly, ...s.weekly.filter((x: WeekW) => !BUNDLED_WEEKS.includes(x.week))]; return { ...BUNDLED, coef: meanWeights(wk), weekly: wk, platform: { ...BUNDLED.platform, ...s.platform }, fittedOn: `tiered weeks 1–5 + in-app refit`, source: "in-app" as const }; }
+  } catch { /* ignore */ }
   return BUNDLED;
 }
 const sane = (c: number[]) => c[1] > 0 && c[1] < 1 && c[2] > 0 && c[2] < 1 && c[3] > 0 && c[3] < 1 && c[4] > -1 && c[4] < 0.5;
@@ -126,7 +127,7 @@ export async function loadServerModel(): Promise<Model> {
   const base = loadModel();
   try { const r = await fetch("/api/weights"); if (!r.ok) return base; const { weekly } = await r.json();
     if (!weekly?.length) return base;
-    const extra: WeekW[] = weekly.map((x: any) => ({ week: x.week, w: x.w, resid: x.resid }));
+    const extra: WeekW[] = weekly.map((x: any) => ({ week: x.week, w: x.w, resid: x.resid })).filter((x: WeekW) => !BUNDLED_WEEKS.includes(x.week)); // tiered weeks 1–5 win
     const all = [...base.weekly.filter((x) => !extra.some((e) => e.week === x.week)), ...extra].sort((a, b) => a.week - b.week);
     const platform = { ...base.platform }; for (const x of weekly) if (x.platform) platform[x.week] = x.platform;
     return { ...base, weekly: all, coef: meanWeights(all), platform, fittedOn: `${all.length} weekly weight sets (weeks ${all.map((x) => x.week).join(",")}), server refit`, source: "in-app" };

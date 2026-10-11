@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import fs from "fs";
 import { BUNDLED, TRAIN, weekOf, weekEnd, weekFeatures, pointTrading, refit, monteCarlo, maker, isBulkAddress, ols } from "../src/aura/estimator";
+import { TIERED, tierOf, xrow } from "../src/aura/estimator";
+import V2 from "../src/aura/model_v2.json";
+const V2COEF = V2.coef;
 
 const RAW2 = "/workspace/aura/raw2";
 const csv = (p: string) => { const l = fs.readFileSync(p, "utf8").trim().split("\n"); const h = l[0].split(","); return l.slice(1).map((x) => Object.fromEntries(x.split(",").map((v, i) => [h[i], v]))); };
@@ -25,21 +28,26 @@ describe.skipIf(!fs.existsSync(RAW2))("AURA v2 features match the offline pipeli
       expect(f.hoursOpen).toBe(+O.get(r.wallet + ":" + r.week)!.oi_presence_h);
     }
   });
-  it("test wallet per-week estimates equal the Python model (15.8, 6.2, 5.4, 4.0, 30.9)", () => {
+  it("test wallet per-week estimates = exp(x · tiered mean weights) × 1.2 calibration", () => {
     const raw = loadRaw2("B63A9TNQmBxSeWyzasS9ke2n1yyhsXsfvLPGrzpb2Q3w");
-    const est = [1, 2, 3, 4, 5].map((w) => { const p = BUNDLED.platform[w]; return +pointTrading(BUNDLED, weekFeatures(raw, w), p.vol, p.oih).mid.toFixed(1); });
-    expect(est).toEqual([15.8, 6.2, 5.4, 4.0, 30.9]);
+    for (const w of [1, 2, 3, 4, 5]) { const p = BUNDLED.platform[w]; const f = weekFeatures(raw, w);
+      const x = xrow(f, p.vol, p.oih); const manual = Math.exp(x.reduce((s, v, i) => s + v * TIERED.mean[i], 0)) * 1.2;
+      expect(pointTrading(BUNDLED, f, p.vol, p.oih).mid).toBeCloseTo(manual, 6);
+      // same features under the old v2 weights: the tiered model stays within ×2.5 of it
+      const old = Math.exp(x.reduce((s, v, i) => s + v * V2COEF[i], 0)); expect(Math.abs(Math.log(manual / old))).toBeLessThan(Math.log(2.5)); }
   });
 });
 
 describe("AURA v2 model", () => {
   it("point weights = mean of weekly weights; per-week OLS refit reproduces each stored week", () => {
-    expect(BUNDLED.coef[0]).toBeCloseTo(17.9, 2); expect(BUNDLED.coef[4]).toBeCloseTo(-0.202, 3);
-    for (const wk of BUNDLED.weekly) {
-      const { coef, resid } = refit(TRAIN.filter((r) => r[0] === wk.week), BUNDLED.platform);
-      expect(Math.abs(coef[0] - wk.w[0])).toBeLessThan(0.1); coef.slice(1).forEach((c, i) => expect(Math.abs(c - wk.w[i + 1])).toBeLessThan(0.01));
-      expect(resid.length).toBe(wk.resid.length);
-    }
+    // tiered calibration: coef = mean of the 5 tier-weighted weekly vectors (aura/weekly_weights_tiered.json)
+    BUNDLED.coef.forEach((c, i) => expect(c).toBeCloseTo(BUNDLED.weekly.reduce((s, w) => s + w.w[i], 0) / BUNDLED.weekly.length, 9));
+    expect(BUNDLED.coef[0]).toBeCloseTo(16.892, 2); expect(BUNDLED.weekly.length).toBe(5);
+    expect([100, 148, 149, 512, 513, 1900, 5300, 30000, 30001].map(tierOf)).toEqual(["Bronze", "Bronze", "Silver", "Silver", "Gold", "Gold", "Platinum", "Diamond", "Challenger"]);
+    expect(Object.fromEntries(Object.entries(TIERED.residByTier).map(([t, r]) => [t, r.length]))).toEqual({ Bronze: 544, Silver: 473, Gold: 468, Platinum: 323, Diamond: 413, Challenger: 151 });
+    expect(TIERED.calib).toBe(1.2); expect(TIERED.widen).toEqual({ Silver: 1.12, Challenger: 1.12 });
+    // the old unweighted refit path still runs (used for in-app weeks 6+)
+    const { coef } = refit(TRAIN.filter((r) => r[0] === 3), BUNDLED.platform); expect(coef.length).toBe(5);
     expect(ols([[1, 0], [1, 1], [1, 2]], [1, 3, 5])).toEqual([expect.closeTo(1, 9), expect.closeTo(2, 9)]);
   });
   it("Monte Carlo: ordered quantiles, seeded/deterministic, more volume → more AURA, full week ≈ point × residual noise", () => {

@@ -155,3 +155,4 @@ details.classic>summary{cursor:pointer;list-style:none}details.classic>summary::
 }
 @media (max-width:23rem){.families{grid-template-columns:1fr}}
 .bt summary{cursor:pointer;color:var(--ink-2)}.bt-t{margin:8px 0;font-size:12px}.bt-t td,.bt-t th{padding:4px 8px;white-space:normal}
+.findbtn{font-weight:700!important}

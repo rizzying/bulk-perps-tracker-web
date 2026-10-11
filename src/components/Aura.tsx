@@ -116,7 +116,7 @@ function WalletEstimate({ address, label, model, saved }: { address: string; lab
       <div className="small muted">Actual AURA from aurabulk.xyz/api/wallet. Weeks run Sat 06:00 UTC → Sat 06:00 UTC. The model counts volume from closed positions only (master + sub-accounts). Weeks 1–5 use the platform totals from the fit; later weeks use klines and the app's own OI recorder.</div>
     </section>
     <section className="card small"><h3>Caveats</h3><ul>
-      <li>{NOTE} Walk-forward backtest: typical error ×1.49, about 79% of actual results fall inside P10–P90.</li>
+      <li>{NOTE} Tier-balanced calibration (tier from the estimate itself, cuts 148/512/1,900/5,300/30,000; median ×1.2 because both models under-predicted by ~20%). Walk-forward backtest over 1,996 wallet-weeks: typical error ×1.52, about 81% of actual results inside P10–P90, ranges ~13% tighter than the previous model. Silver and Challenger wallets are less reliable (79% and 73% coverage).</li>
       <li>Boosts, gauntlets, referrals and protocol AURA are not modeled. There is probably a cap or wash filter on huge volume.</li>
       <li>Early in the week the forecast is mostly assumption: how much you'll still trade, and platform totals.</li>
       <li>Platform OI comes from Bulk /stats, sampled while the app runs, scaled ×1.93 to match the fit's bulkstats data.</li>

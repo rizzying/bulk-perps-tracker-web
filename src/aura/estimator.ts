@@ -6,6 +6,7 @@
  * Week = Sat 06:00 UTC (13:00 WIB) → next Sat.
  */
 import M from "./model_v2.json";
+import TM from "./model_tiered.json";
 
 export const WEEK_MS = 7 * 864e5, HOUR = 36e5, DAY = 864e5;
 export const WEEK1_START = Date.parse(M.week1_start_utc);
@@ -16,7 +17,14 @@ export const BAND = 2.6;
 
 export type WeekW = { week: number; w: number[]; resid: number[] };
 export type Model = { coef: number[]; weekly: WeekW[]; platform: Record<number, { vol: number; oih: number }>; fittedOn: string; refitWeek?: number; source: "bundled" | "in-app" };
-export const BUNDLED: Model = { coef: M.coef, weekly: M.weekly as WeekW[], platform: Object.fromEntries(Object.entries(M.platform).map(([k, v]) => [+k, v as any])), fittedOn: M.fitted_on, source: "bundled" };
+/** Tier-balanced calibration (aura/weekly_weights_tiered.json): tier-weighted per-week weights, per-tier residual pools,
+ *  tier from the model's own point estimate (cuts 148/512/1900/5300/30000), median ×1.2 (models under-predict ~20%), Silver/Challenger bands ×1.12.
+ *  Walk-forward weeks 2–5 (1,996 wallet-weeks): typical error ×1.52, P10–P90 coverage 80.7%, P90/P10 width ×5.83 (old model ×1.59 / 79.8% / ×6.73), bias ×1.05. */
+export const TIERED = TM as { mean: number[]; weekly: WeekW[]; cuts: number[]; tiers: string[]; calib: number; widen: Record<string, number>; residByTier: Record<string, number[]> };
+export const tierOf = (aura: number) => TIERED.tiers[TIERED.cuts.findIndex((c) => aura <= c) === -1 ? TIERED.cuts.length : TIERED.cuts.findIndex((c) => aura <= c)];
+const TIER_MED = Object.fromEntries(Object.entries(TIERED.residByTier).map(([t, r]) => [t, [...r].sort((a, b) => a - b)[Math.floor(r.length / 2)]]));
+export const BUNDLED_WEEKS = TIERED.weekly.map((w) => w.week);
+export const BUNDLED: Model = { coef: TIERED.mean, weekly: TIERED.weekly, platform: Object.fromEntries(Object.entries(M.platform).map(([k, v]) => [+k, v as any])), fittedOn: M.fitted_on, source: "bundled" };
 export const MC = M.mc, SIG = { week: M.sig_week, pv: M.sig_pv, po: M.sig_po };
 export const OI_STATS_FACTOR = M.oi_stats_factor, VOL_KLINES_FACTOR = M.vol_klines_factor;
 export const TRAIN: number[][] = M.train as number[][]; // [week, vol, |fees|, OIh, hours_open, aura]
@@ -45,7 +53,7 @@ export const xrow = (f: { vol: number; fees: number; oih: number; hoursOpen: num
   [1, Math.log(Math.max(f.vol, 1e-6) / pv), Math.log((f.fees + 0.01) / pv), Math.log((f.oih + 1) / poh), Math.log1p(f.hoursOpen)];
 export function pointTrading(m: Model, f: Feat, pv: number, poh: number) {
   if (!(f.vol > 0)) return { mid: 0, lo: 0, hi: 0 };
-  const y = xrow(f, pv, poh).reduce((s, x, i) => s + x * m.coef[i], 0); const mid = Math.exp(y);
+  const y = xrow(f, pv, poh).reduce((s, x, i) => s + x * m.coef[i], 0); const mid = Math.exp(y) * TIERED.calib;
   return { mid, lo: mid / BAND, hi: mid * BAND };
 }
 export const maker = (makerVol: number) => (makerVol > 0 ? Math.exp(M.maker.a) * makerVol ** M.maker.b : 0);
@@ -81,8 +89,11 @@ export function monteCarlo(m: Model, observed: DayRow, elapsedDays: number, pool
     if (!(f.vol > 0)) { S[i] = 0; continue; }
     const pv = prev.vol * Math.exp(SIG.pv * gauss(rng)), po = prev.oih * Math.exp(SIG.po * gauss(rng));
     // resample one past week's full weight vector, then a residual from that week's own fit
-    const wk = m.weekly[Math.floor(rng() * m.weekly.length)];
-    const y = xrow(f, pv, po).reduce((s, x, j) => s + x * wk.w[j], 0) + wk.resid[Math.floor(rng() * wk.resid.length)];
+    const wk = m.weekly[Math.floor(rng() * m.weekly.length)]; const X = xrow(f, pv, po);
+    // tier from the model's own point estimate; residual drawn from that tier's pool (all weeks), widened for Silver/Challenger
+    const tier = tierOf(Math.exp(X.reduce((s, x, j) => s + x * m.coef[j], 0))); const pool = TIERED.residByTier[tier]?.length > 20 ? TIERED.residByTier[tier] : wk.resid;
+    const e0 = pool[Math.floor(rng() * pool.length)]; const wf = TIERED.widen[tier] ?? 1; const e = TIER_MED[tier] != null ? TIER_MED[tier] + (e0 - TIER_MED[tier]) * wf : e0;
+    const y = X.reduce((s, x, j) => s + x * wk.w[j], 0) + e + Math.log(TIERED.calib);
     S[i] = Math.exp(y);
   }
   const sorted = Float64Array.from(S).sort(); const q = (p: number) => sorted[Math.min(N - 1, Math.floor(p * N))];
