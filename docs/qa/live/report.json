@@ -218,14 +218,7 @@
    "W": 430,
    "tab": "Dashboard",
    "theme": "dark",
-   "contrast": [
-    {
-     "el": "span.pill.danger",
-     "text": "2.11%",
-     "ratio": 3.84,
-     "need": 4.5
-    }
-   ],
+   "contrast": [],
    "overflow": [],
    "clipped": [],
    "docOverflow": 0,
@@ -364,12 +357,6 @@
    "theme": "light",
    "contrast": [
     {
-     "el": "td.pos",
-     "text": "3.27 R",
-     "ratio": 4.2,
-     "need": 4.5
-    },
-    {
      "el": "span.hl-key",
      "text": "■",
      "ratio": 4.12,
@@ -476,12 +463,6 @@
    "tab": "Setup",
    "theme": "light",
    "contrast": [
-    {
-     "el": "td.pos",
-     "text": "3.27 R",
-     "ratio": 4.2,
-     "need": 4.5
-    },
     {
      "el": "span.hl-key",
      "text": "■",
